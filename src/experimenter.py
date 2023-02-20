@@ -1,4 +1,5 @@
 from kubernetes import client, config, watch
+import time 
 
 def load_kube_config(config_file: str=None):
     config.load_kube_config(config_file=config_file)
@@ -77,7 +78,48 @@ def delete_deployment(namespace: str, deployment_name: str):
     except client.ApiException as e:
         return e
 
+def wait_until_deployment_ready(namespace: str, deployment_name: str, timeout: int | None =None):
+    '''
+        Waits until the deployment is ready. Return and exception if timeout occur. 
+        Default timeout is none.
+    '''
+    w = watch.Watch()
+    appsv1 = client.AppsV1Api()
 
-load_kube_config()
-# create_deployment("experiments", 1, "dp1", "cnt1", "nginx")
-delete_deployment("experiments", "dp1")
+    try:
+        for event in w.stream(appsv1.list_namespaced_deployment, namespace=namespace, _request_timeout=timeout):
+            deployment = event['object'].to_dict()
+
+            if deployment['metadata']['name'] != deployment_name: continue
+            
+            ready_replicas = deployment['status']['ready_replicas']
+            replicas = deployment['status']['replicas']
+
+            # If null continue
+            if not ready_replicas: continue
+
+            if ready_replicas == replicas:
+                w.stop()
+
+    except client.ApiException as e:
+        return e
+    except KeyboardInterrupt:
+        return
+
+if __name__ == "__main__":
+    load_kube_config()
+    print("kubeconfig loaded.")
+
+    print("Checking namespace")
+    check_namespace("experiments")
+
+    print("Creating deployment")
+    create_deployment("experiments", 1, "dp1", "cnt1", "nginx")
+
+    print("Waiting...")
+    wait_until_deployment_ready("experiments", "dp1")
+
+    print("Deleting deployment")
+    delete_deployment("experiments", "dp1")
+
+    print("Experiment coldstart done!")
