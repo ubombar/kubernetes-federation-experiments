@@ -2,6 +2,7 @@ from kubernetes import client, config, watch
 from datetime import datetime
 from experiment import ExperimentRound
 import time 
+import pandas as pd
 
 class KnativeExperimenter():
     def __init__(self, namespace: str, replicas: int, container_image: str, framework: str, cooldown: float) -> None:
@@ -174,29 +175,14 @@ class KnativeExperimenter():
         except KeyboardInterrupt:
             return
 
-# # Quick experiment prepared for KNative environment.
-# # Creates a ns and a deployment. Waits for it ti be created, then immidiately deletes it.
-# if __name__ == "__main__":
-#     k = KnativeExperimenter(namespace="experiments", container_image="nginx", replicas=1)
-#     # config.load_kube_config()
-#     k.load_kube_config()
-#     print("kubeconfig loaded.")
+# Quick experiment prepared for KNative environment.
+# Creates a ns and a deployment. Waits for it ti be created, then immidiately deletes it.
+if __name__ == "__main__":
+    k = KnativeExperimenter(namespace="experiments", container_image="nginx", replicas=1, framework="knative", cooldown=10)
+    results = k.run(1)
 
-#     print("Checking namespace")
-#     g = k.check_namespace()
-
-#     print(g)
-
-#     print("Creating deployment")
-#     k.create_deployment()
-
-#     print("Waiting...")
-#     k.wait_until_deployment_ready()
-
-#     print("Deleting deployment")
-#     k.delete_deployment()
-
-#     print("Experiment coldstart done!")
-
-k = KnativeExperimenter(namespace="experiments", container_image="nginx", replicas=1, framework="knative", cooldown=10)
-print(k.run(1))
+    results_df = pd.DataFrame(results)
+    current_date = datetime.now()
+    filename = f"./exps/{str(current_date).split('.')[0].replace(' ', '_').replace('-', '').replace(':', '')}.feather"
+    results_df.to_feather(filename)
+    print(f"Experiment saved as {filename}")
