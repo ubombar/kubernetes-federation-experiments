@@ -3,6 +3,8 @@ from datetime import datetime
 from experiment import ExperimentRound
 import time 
 import pandas as pd
+import numpy as np 
+from number_of_experimetns import calculate_number_of_replicas
 
 class KnativeExperimenter():
     def __init__(self, namespace: str, replicas: int, container_image: str, framework: str, cooldown: float) -> None:
@@ -21,7 +23,7 @@ class KnativeExperimenter():
         experiment_list = []
 
         estimated_time = int(steps * (1.5 * self.replicas + self.cooldown))
-        print(f"Experiment of {steps} step(s) with {self.replicas} replica(s) in '{self.framework}' and '{self.container_image}' image. Estimated time for the experiment: {estimated_time} second(s)")
+        print(f"Experiment of {steps} step(s) with {self.replicas} replica(s) in '{self.framework}' and '{self.container_image}' image in namespace '{self.namespace}'. Estimated time for the experiment: {estimated_time} second(s)")
 
         for s in range(steps):
             eess = []
@@ -175,14 +177,12 @@ class KnativeExperimenter():
         except KeyboardInterrupt:
             return
 
-# Quick experiment prepared for KNative environment.
-# Creates a ns and a deployment. Waits for it ti be created, then immidiately deletes it.
-if __name__ == "__main__":
-    k = KnativeExperimenter(namespace="experiments", container_image="nginx", replicas=1, framework="knative", cooldown=10)
-    results = k.run(1)
-
-    results_df = pd.DataFrame(results)
-    current_date = datetime.now()
-    filename = f"./exps/{str(current_date).split('.')[0].replace(' ', '_').replace('-', '').replace(':', '')}.feather"
-    results_df.to_feather(filename)
-    print(f"Experiment saved as {filename}")
+def experiment_with(replicas, namespace_experiment, cooldowns, step):
+    for replica , cooldown in zip(replicas, cooldowns):
+        k = KnativeExperimenter(namespace=namespace_experiment, container_image="nginx", replicas=replica, framework="knative", cooldown=cooldown)
+        results = k.run(step)
+    
+        results_df = pd.DataFrame(results)
+        current_date = datetime.now()
+        filename = f"./exps/{str(current_date).split('.')[0].replace(' ', '_').replace('-', '').replace(':', '')}_{replica}.feather"
+        results_df.to_feather(filename)
