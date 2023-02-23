@@ -1,6 +1,6 @@
 from kubernetes import client, config, watch
 from datetime import datetime
-from experiment import ExperimentRound
+from experiment import ExperimentRound, append_to_feather, generate_feather_name
 import time 
 import pandas as pd
 import numpy as np 
@@ -196,16 +196,15 @@ def experiment_with(replicas, namespace_experiment, cooldowns, step, driver):
             cooldown=cooldown, 
             driver=driver,
             steps=step,
-            container_command=["/bin/sh", "-c", "sleep 9999"]) for replica , cooldown in zip(replicas, cooldowns)
-        ]
+            container_command=["/bin/sh", "-c", "sleep 9999"]) for replica , cooldown in zip(replicas, cooldowns) ]
 
+    filename = generate_feather_name()
     total_time_reuired = sum([k.estimate_time() for k in experiment_objects])
-    print(f"Estimated time {total_time_reuired} second(s)")
+    
+    print(f"Estimated time {total_time_reuired} second(s) in {filename}.")
 
     for experiment in experiment_objects:        
         results = experiment.run()
+        append_to_feather(filename, results)
     
-        results_df = pd.DataFrame(results)
-        current_date = datetime.now()
-        filename = f"./exps/{str(current_date).split('.')[0].replace(' ', '_').replace('-', '').replace(':', '')}_{experiment.replicas}.feather"
-        results_df.to_feather(filename)
+        

@@ -1,6 +1,7 @@
 from datetime import datetime
 import pandas as pd 
 from dataclasses import dataclass
+import os
 
 @dataclass
 class ExperimentRound():
@@ -47,3 +48,18 @@ class ExperimentRound():
 
     # Command used to run the container
     command: list[str]
+
+def append_to_feather(filename, new_df):
+    if not os.path.exists(filename):
+        empty_df = pd.DataFrame({"test": []})
+        empty_df.to_feather(filename)
+
+    old_df: pd.DataFrame = pd.read_feather(filename)
+
+    big_df = pd.concat([old_df, new_df])
+
+    big_df.to_feather(filename)
+
+def generate_feather_name():
+    current_date = datetime.now()
+    return f"./exps/{str(current_date).split('.')[0].replace(' ', '_').replace('-', '').replace(':', '')}.feather"
