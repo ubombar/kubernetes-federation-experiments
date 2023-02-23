@@ -205,6 +205,7 @@ def experiment_with(replicas, namespace_experiment, cooldowns, step, driver):
 
     for experiment in experiment_objects:        
         results = experiment.run()
-        append_to_feather(filename, results)
+        results_df = pd.DataFrame(results)
+        append_to_feather(filename, results_df)
     
         
