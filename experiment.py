@@ -41,3 +41,9 @@ class ExperimentRound():
 
     # Time waited in seconds after deployment created
     cool_period: float
+
+    # Driver of the kubernetes cluster
+    driver: str
+
+    # Command used to run the container
+    command: list[str]
