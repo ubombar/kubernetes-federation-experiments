@@ -56,10 +56,21 @@ def append_to_feather(filename, new_df):
 
     old_df: pd.DataFrame = pd.read_feather(filename)
 
-    big_df = pd.concat([old_df, new_df])
+    big_df = pd.concat([old_df, new_df], ignore_index=True)
+    # old_df.append(new_df, ignore_index=True)
 
     big_df.to_feather(filename)
 
 def generate_feather_name():
     current_date = datetime.now()
     return f"./exps/{str(current_date).split('.')[0].replace(' ', '_').replace('-', '').replace(':', '')}.feather"
+
+# filename1 = "/home/manus/Documents/Development/go/github.com/ubombar/kubernetes-federation-experiments/exps/20230223_145305.feather"
+# filename2 = "/home/manus/Documents/Development/go/github.com/ubombar/kubernetes-federation-experiments/exps/20230223_145004.feather"
+
+# old_df: pd.DataFrame = pd.read_feather(filename1)
+# new_df: pd.DataFrame = pd.read_feather(filename2)
+
+# big_df = old_df.append(new_df)
+
+# print(big_df)

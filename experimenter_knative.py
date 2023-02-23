@@ -39,6 +39,10 @@ class KnativeExperimenter():
             experiment_deployment_creation_finished_date = datetime.now()
 
             eess.append(self.wait_until_deployment_ready())
+
+            # Sleep after all replicas are created
+            time.sleep(1)
+
             eess.append(self.delete_deployment())
 
             # Cooldown after 
@@ -49,7 +53,7 @@ class KnativeExperimenter():
             experiment_deployment_deletion_finished_date = datetime.now()
             experiment_finsh_date = experiment_deployment_deletion_finished_date
 
-            exception_occured = eess == [None, None, None]
+            exception_occured = eess != [None, None, None]
 
             experiment_list.append(ExperimentRound(
                 experiment_start_date=experiment_start_date,
@@ -66,10 +70,10 @@ class KnativeExperimenter():
                 cool_period=self.cooldown,
                 framework=self.framework,
                 replicas=self.replicas,
-                step=s,
+                step=int(s),
                 total_steps=self.steps,
                 error_occured=exception_occured,
-                exception=str(eess),
+                exception=[str(e) for e in eess],
                 driver=self.driver,
                 command=self.container_command
             ))
