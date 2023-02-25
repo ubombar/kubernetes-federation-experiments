@@ -35,3 +35,37 @@ For each framework and there will be different number of replicas used. These re
 
 ![Replica Count](res/replicas.png "")
 
+## Experiment
+In the experiment there are two threads. First applies the api commands (Creates and deletes the deployment), the second watches for events and reports them. More detailed explaination can be seen below.
+
+```py
+def event_thread():
+    for event in api_events():
+        register_event_timestamps(event)
+
+        if event.type == DELETED:
+            return
+
+def experiment():
+    # Creates the event thread
+    spawn event_thread()
+
+    # Create a busybox deployment
+    create_deployment()
+
+    # Creation means; replicas == reguested_replicas
+    wait_until_deployment_created()
+
+    # Delete the deployment
+    delete_deployment()
+
+    # Waits until the deployment is 
+    wait_until_deployment_deleted()
+    
+    # Wait for the thread to exit
+    join event_thread()
+
+    # Experiment is finished, save the data generated.
+    return
+
+```

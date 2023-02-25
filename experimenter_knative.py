@@ -38,7 +38,7 @@ class KnativeExperimenter():
 
         def event_thread_fn(watcher_dict: dict):
             '''There is no need for locking watcher_dict, no concurrent access.'''
-            w = watch.watch()
+            w = watch.Watch()
             appsv1 = client.AppsV1Api()
 
             for event in w.stream(appsv1.list_namespaced_deployment, namespace=self.namespace):
@@ -67,7 +67,7 @@ class KnativeExperimenter():
                 'ready_replica_counts': [],
             }
 
-            event_thread = threading.Thread(target=event_thread_fn, args=watcher_dict)
+            event_thread = threading.Thread(target=event_thread_fn, args=[watcher_dict,])
             event_thread.start()
             time.sleep(0.5)
             # Wait until event thread is watching k8s api events.
