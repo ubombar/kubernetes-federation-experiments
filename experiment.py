@@ -5,22 +5,23 @@ import os
 
 @dataclass
 class ExperimentRound():
-    # First time the experiment started
-    experiment_start_date: datetime
+    # Measurement taken just before creation
+    before_create_timestamp: datetime
 
-    # The time experiment finished
-    experiment_finsh_date: datetime
+    # Measurement taken just before first waiting
+    before_firstwait_timestamp: datetime
 
-    # When the deployments becomes ready
-    experiment_deployment_becoma_ready_date: datetime
+    # Measurement taken just before delete
+    before_delete_timestamp: datetime
 
-    # Start and finish dates of deployment creation
-    experiment_deployment_creation_started_date: datetime
-    experiment_deployment_creation_finished_date: datetime
+    # Measurement taken just before second waiting
+    before_secondwait_timestamp: datetime
 
-    # Start and finish dates of deplotment deletion
-    experiment_deployment_deletion_started_date: datetime
-    experiment_deployment_deletion_finished_date: datetime
+    # Measurement taken just after cooldown
+    before_cooldown_timestamp: datetime
+
+    # Measurement taken just after cooldown
+    before_join_timestamp: datetime
 
     # Number of replicas
     replicas: int
@@ -32,7 +33,7 @@ class ExperimentRound():
     error_occured: bool
 
     # Kubernetes API exception (string representation)
-    exception: str
+    errors_rised: str
 
     # Experiment's current step
     step: int
@@ -48,6 +49,17 @@ class ExperimentRound():
 
     # Command used to run the container
     command: list[str]
+
+    # Event timestamps
+    event_created_at: datetime
+    event_deleted_at: datetime
+
+    # Timestamp list for each modificaion event
+    event_modified_at: list[datetime]
+
+    # Number of replicas for each event received
+    event_replicas_at: list[datetime]
+
 
 def append_to_feather(filename, new_df):
     if not os.path.exists(filename):

@@ -5,6 +5,11 @@ import time
 import pandas as pd
 import numpy as np 
 from number_of_experimetns import calculate_number_of_replicas
+import threading 
+
+EVENT_ADDED    = "ADDED"
+EVENT_MODIFIED = "MODIFIED"
+EVENT_DELETED  = "DELETED"
 
 class KnativeExperimenter():
     def __init__(self, namespace: str, replicas: int, container_image: str, framework: str, cooldown: float, steps: int, container_command: list[str], driver: str) -> None:
@@ -23,7 +28,7 @@ class KnativeExperimenter():
     def estimate_time(self, delay_per_replica: float=0.1):
         return int(self.steps * (delay_per_replica * self.replicas + self.cooldown))
 
-    def run(self):
+    def run(self, timeout=99999):
         self.load_kube_config()
         self.check_namespace()
         experiment_list = []
@@ -31,51 +36,94 @@ class KnativeExperimenter():
         estimated_time = self.estimate_time(self.steps)
         print(f"Experiment of {self.steps} step(s) with {self.replicas} replica(s) in '{self.framework}' and '{self.container_image}' image in namespace '{self.namespace}'. Estimated time for the experiment: {estimated_time} second(s)")
 
+        def event_thread_fn(watcher_dict: dict):
+            '''There is no need for locking watcher_dict, no concurrent access.'''
+            w = watch.watch()
+            appsv1 = client.AppsV1Api()
+
+            for event in w.stream(appsv1.list_namespaced_deployment, namespace=self.namespace):
+                event_type = event['type']
+                event_object = event['object'].to_dict()
+
+                if not event_object['metadata']['name'] == self.deployment_name: continue
+
+                if event_type == EVENT_ADDED:
+                    watcher_dict['created_at'] = datetime.now()
+                elif event_type == EVENT_DELETED:
+                    watcher_dict['deleted_at'] = datetime.now()
+                    w.stop()
+                else:
+                    watcher_dict['modified_at'].append(datetime.now())
+                    ready_replicas = event_object['status']['ready_replicas']
+                    watcher_dict['ready_replica_counts'].append(ready_replicas)
+
+
         for s in range(self.steps):
-            eess = []
-            experiment_start_date = datetime.now()
-            experiment_deployment_creation_started_date = experiment_start_date
-            eess.append(self.create_deployment())
-            experiment_deployment_creation_finished_date = datetime.now()
+            errors_rised = []
+            watcher_dict = {
+                'created_at': None,
+                'deleted_at': None,
+                'modified_at': [],
+                'ready_replica_counts': [],
+            }
 
-            eess.append(self.wait_until_deployment_ready())
+            event_thread = threading.Thread(target=event_thread_fn, args=watcher_dict)
+            event_thread.start()
+            time.sleep(0.5)
+            # Wait until event thread is watching k8s api events.
+            
+            # CREATE
+            before_create_timestamp = datetime.now()
+            errors_rised.append(self.create_deployment())
 
-            # Sleep after all replicas are created
+            # FIRST WAIT
+            before_firstwait_timestamp = datetime.now()
+            errors_rised.append(self.wait_until_deployment_ready())
             time.sleep(1)
 
-            eess.append(self.delete_deployment())
+            # DELETE
+            before_delete_timestamp = datetime.now()
+            errors_rised.append(self.delete_deployment())
 
-            # Cooldown after 
-            experiment_deployment_becoma_ready_date = datetime.now()
+            # SECOND WAIT
+            before_secondwait_timestamp = datetime.now()
+            time.sleep(1)
+
+            # COOLDOWN
+            before_cooldown_timestamp = datetime.now()
             time.sleep(self.cooldown)
-            experiment_deployment_deletion_started_date = datetime.now()
 
-            experiment_deployment_deletion_finished_date = datetime.now()
-            experiment_finsh_date = experiment_deployment_deletion_finished_date
+            # JOIN
+            before_join_timestamp = datetime.now()
+            event_thread.join(timeout=timeout)
 
-            exception_occured = eess != [None, None, None]
+            exception_occured = errors_rised != [None, None, None]
 
             experiment_list.append(ExperimentRound(
-                experiment_start_date=experiment_start_date,
-                experiment_finsh_date=experiment_finsh_date,
+                # Measurements of the experiment
+                before_create_timestamp=before_create_timestamp,
+                before_firstwait_timestamp=before_firstwait_timestamp,
+                before_delete_timestamp=before_delete_timestamp,
+                before_secondwait_timestamp=before_secondwait_timestamp,
+                before_cooldown_timestamp=before_cooldown_timestamp,
+                before_join_timestamp=before_join_timestamp,
 
-                experiment_deployment_becoma_ready_date=experiment_deployment_becoma_ready_date,
-                
-                experiment_deployment_creation_started_date=experiment_deployment_creation_started_date,
-                experiment_deployment_creation_finished_date=experiment_deployment_creation_finished_date,
-
-                experiment_deployment_deletion_started_date=experiment_deployment_deletion_started_date,
-                experiment_deployment_deletion_finished_date=experiment_deployment_deletion_finished_date,
-
+                # Experiment metadata
                 cool_period=self.cooldown,
                 framework=self.framework,
                 replicas=self.replicas,
                 step=int(s),
                 total_steps=self.steps,
                 error_occured=exception_occured,
-                exception=[str(e) for e in eess],
+                errors_rised=[str(e) for e in errors_rised],
                 driver=self.driver,
-                command=self.container_command
+                command=self.container_command,
+
+                # Event related measurements
+                event_created_at=watcher_dict["created_at"],
+                event_deleted_at=watcher_dict["deleted_at"],
+                event_modified_at=watcher_dict["modified_at"],
+                event_replicas_at=watcher_dict["ready_replica_counts"],
             ))
 
         return experiment_list
@@ -189,6 +237,24 @@ class KnativeExperimenter():
             return e
         except KeyboardInterrupt:
             return
+        
+    def wait_until_deployment_deleted(self, timeout: int | None =None):
+        w = watch.Watch()
+        appsv1 = client.AppsV1Api()
+
+        try:
+            for event in w.stream(appsv1.list_namespaced_deployment, namespace=self.namespace, _request_timeout=timeout):
+                deployment = event['object'].to_dict()
+
+                if deployment['metadata']['name'] != self.deployment_name: continue
+
+                if event['type'] == EVENT_DELETED:
+                    w.stop()
+
+        except client.ApiException as e:
+            return e
+        except KeyboardInterrupt:
+            return
 
 def experiment_with(replicas, namespace_experiment, cooldowns, step, driver):
     experiment_objects = [
@@ -212,4 +278,4 @@ def experiment_with(replicas, namespace_experiment, cooldowns, step, driver):
         results_df = pd.DataFrame(results)
         append_to_feather(filename, results_df)
     
-        
+    return
