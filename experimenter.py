@@ -364,6 +364,84 @@ def get_handler_from(config, framework, driver):
             return NativeHandler(config=config)
     raise NotImplementedError
 
+class NativeKWOKHandler(NativeHandler):
+    def __init__(self, config: ExperimentConfig) -> None:
+        super().__init__(config)
+
+    def create_deployment(self):
+        appsv1 = client.AppsV1Api()
+
+        deployment = client.V1Deployment(
+            metadata=client.V1ObjectMeta(
+                name=self.config.deployment_name,
+                labels={
+                    'app': 'fake'
+                },
+            ),
+            spec=client.V1DeploymentSpec(
+                replicas=self.config.replicas,
+                selector=client.V1LabelSelector(
+                    match_labels={
+                        'app': 'fake',
+                    },
+                ),
+                template=client.V1PodTemplateSpec(
+                    metadata=client.V1ObjectMeta(
+                        labels={
+                            'app': 'fake',
+                        },
+                    ),
+                    spec=client.V1PodSpec(
+                        affinity=client.V1Affinity(
+                            node_affinity=client.V1NodeAffinity(
+                                required_during_scheduling_ignored_during_execution=client.V1NodeSelector(
+                                    node_selector_terms=[
+                                        client.V1NodeSelectorTerm(
+                                            match_expressions=[
+                                                client.V1NodeSelectorRequirement(
+                                                    key="type",
+                                                    operator="In",
+                                                    values=[
+                                                        "kwok"
+                                                    ]
+                                                ),
+                                            ]
+                                        )
+                                    ]
+                                ),
+                            ),
+                        ),
+                        tolerations=[
+                            client.V1Toleration(
+                                key="kwok.x-k8s.io/node",
+                                operator="Exists",
+                                effect="NoSchedule"
+                            )
+                        ],
+                        containers=[
+                            client.V1Container(
+                                name=self.config.container_name,
+                                image=self.config.container_image,
+                                command=self.config.container_command
+                            ),
+                        ]
+                    )
+                )
+            ))
+
+        try:
+            appsv1.create_namespaced_deployment(namespace=self.config.namespace, body=deployment)
+        except client.ApiException as e:
+            return e
+
+def get_handler_from(config, framework, driver):
+    if framework == "native":
+        if driver == "minikube" or driver == "native":
+            return NativeHandler(config=config)
+        elif driver == "kwok":
+            return NativeKWOKHandler(config=config)
+    raise NotImplementedError
+
 def experiment_with(framework, driver, num_step, replica_list, cooldown_list):
     experiment_objects = []
     for replica, cooldown in zip(replica_list, cooldown_list):
@@ -391,4 +469,4 @@ def experiment_with(framework, driver, num_step, replica_list, cooldown_list):
     print("Done!")
 
 # if __name__ == "__main__":
-    # experiment_with("native", "minikube", 1, [1, 1], [1, 1])
+#     experiment_with("native", "kwok", 1, [1, 1], [1, 1])
