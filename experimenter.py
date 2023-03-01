@@ -9,6 +9,7 @@ import pandas as pd
 from dataclasses import dataclass
 import os
 import numpy as np 
+import collections 
 
 def calculate_number_of_replicas(max_replicas: int, number_of_experiments: int) -> np.array:
     '''
@@ -86,6 +87,12 @@ class ExperimentRound():
 
     # Number of replicas for each event received
     event_replicas_at: list[datetime]
+    
+    # Pod metrics, when deployment controller creates and deletes pod objects
+    first_created_at: datetime
+    last_created_at: datetime
+    first_deleted_at: datetime 
+    last_deleted_at: datetime
 
 def append_to_feather(filename, new_df: pd.DataFrame):
     if os.path.exists(filename):
@@ -185,7 +192,7 @@ class Experimenter():
         estimated_time = self.estimate_time()
         print(f"Experiment of {self.config.steps} step(s) with {self.config.replicas} replica(s) in '{self.config.framework}' and '{self.config.container_image}' image in namespace '{self.config.namespace}'. Estimated time for the experiment: {estimated_time} second(s)")
 
-        def event_thread_fn(watcher_dict: dict):
+        def event_thread_deployment_fn(watcher_dict: dict):
             '''There is no need for locking watcher_dict, no concurrent access.'''
             w = watch.Watch()
             appsv1 = client.AppsV1Api()
@@ -206,6 +213,48 @@ class Experimenter():
                     ready_replicas = event_object['status']['ready_replicas']
                     watcher_dict['ready_replica_counts'].append(ready_replicas)
 
+        def event_thread_pods_fn(event_thread_pods: dict):
+            '''There is no need for locking watcher_dict, no concurrent access.'''
+            w = watch.Watch()
+            v1 = client.CoreV1Api()
+
+            pods_measurements = collections.defaultdict(dict)
+            first_created_at = None 
+            last_created_at = None
+            first_deleted_at = None 
+            last_deleted_at = None 
+            number_of_pods = 0
+
+            for event in w.stream(v1.list_namespaced_pod, namespace="experiments"):
+                event_type = event['type']
+                event_object = event['object'].to_dict()
+        
+                # if not event_object['metadata']['name'] == self.config.deployment_name: continue
+        
+                print(f"evet_type: {event_type}")
+                # print(event_object.keys()) # 'api_version', 'kind', 'metadata', 'spec', 'status'
+                pod_name = event_object["metadata"]["name"]
+
+                if event_type == "ADDED":
+                    pods_measurements[pod_name]["created_at"] = datetime.now()
+                    number_of_pods += 1
+                elif event_type == "DELETED":
+                    pods_measurements[pod_name]["deleted_at"] = datetime.now()
+                    pods_measurements[pod_name]["pods_started_time"] = event_object["status"]["start_time"]
+                    number_of_pods -= 1
+                if number_of_pods == 0: w.stop()
+            
+            for pod_name, dates in pods_measurements.items():
+                first_created_at = dates["created_at"] if not first_created_at else min(first_created_at, dates["created_at"])
+                last_created_at = dates["created_at"] if not last_created_at else max(last_created_at, dates["created_at"])
+                first_deleted_at = dates["deleted_at"] if not first_deleted_at else min(first_deleted_at, dates["deleted_at"])
+                last_deleted_at = dates["deleted_at"] if not last_deleted_at else max(last_deleted_at, dates["deleted_at"])
+            
+            event_thread_pods["first_created_at"] = first_created_at 
+            event_thread_pods["last_created_at"] = last_created_at
+            event_thread_pods["first_deleted_at"] = first_deleted_at 
+            event_thread_pods["last_deleted_at"] = last_deleted_at 
+
         for s in range(self.config.steps):
             errors_rised = []
             watcher_dict = {
@@ -214,9 +263,12 @@ class Experimenter():
                 'modified_at': [],
                 'ready_replica_counts': [],
             }
+            watcher_dict_pods = {}
 
-            event_thread = threading.Thread(target=event_thread_fn, args=[watcher_dict,])
-            event_thread.start()
+            event_thread_deployment = threading.Thread(target=event_thread_deployment_fn, args=[watcher_dict,])
+            event_thread_pods = threading.Thread(target=event_thread_deployment_fn, args=[watcher_dict_pods,])
+            event_thread_deployment.start()
+            event_thread_pods.start()
             time.sleep(0.5)
             # Wait until event thread is watching k8s api events.
             
@@ -243,9 +295,12 @@ class Experimenter():
 
             # JOIN
             before_join_timestamp = datetime.now()
-            event_thread.join(timeout=timeout)
+            event_thread_deployment.join(timeout=timeout)
+            event_thread_pods.join(timeout=timeout)
 
             exception_occured = len([e for e in errors_rised if e != None]) != 0
+
+
 
             experiment_list.append(ExperimentRound(
                 # Measurements of the experiment
@@ -272,6 +327,12 @@ class Experimenter():
                 event_deleted_at=watcher_dict["deleted_at"],
                 event_modified_at=watcher_dict["modified_at"],
                 event_replicas_at=watcher_dict["ready_replica_counts"],
+
+                # Pod measurements
+                first_created_at=watcher_dict_pods["first_created_at"],
+                last_created_at=watcher_dict_pods["last_created_at"],
+                first_deleted_at=watcher_dict_pods["first_deleted_at"], 
+                last_deleted_at=watcher_dict_pods["last_deleted_at"],
             ))
 
         return experiment_list
@@ -467,5 +528,49 @@ def experiment_with(framework, driver, num_step, replica_list, cooldown_list):
 
     print("Done!")
 
-# if __name__ == "__main__":
-    # experiment_with("native", "kwok", 1, [1, 1], [1, 1])
+if __name__ == "__main__":
+    experiment_with("native", "minikube", 1, [1], [1])
+    # config.load_kube_config()
+    # w = watch.Watch()
+    # v1 = client.CoreV1Api()
+
+    # pods_measurements = collections.defaultdict(dict)
+    # first_created_at = None 
+    # last_created_at = None
+    # first_deleted_at = None 
+    # last_deleted_at = None 
+    # number_of_pods = 0
+
+    # try:
+    #     for event in w.stream(v1.list_namespaced_pod, namespace="experiments"):
+    #         event_type = event['type']
+    #         event_object = event['object'].to_dict()
+    
+    #         # if not event_object['metadata']['name'] == self.config.deployment_name: continue
+    
+    #         print(f"evet_type: {event_type}")
+    #         # print(event_object.keys()) # 'api_version', 'kind', 'metadata', 'spec', 'status'
+    #         pod_name = event_object["metadata"]["name"]
+
+    #         if event_type == "ADDED":
+    #             pods_measurements[pod_name]["created_at"] = datetime.now()
+    #             number_of_pods += 1
+    #         elif event_type == "DELETED":
+    #             pods_measurements[pod_name]["deleted_at"] = datetime.now()
+    #             pods_measurements[pod_name]["pods_started_time"] = event_object["status"]["start_time"]
+    #             number_of_pods -= 1
+    #         if number_of_pods == 0: w.stop()
+        
+    #     for pod_name, dates in pods_measurements.items():
+    #         first_created_at = dates["created_at"] if not first_created_at else min(first_created_at, dates["created_at"])
+    #         last_created_at = dates["created_at"] if not last_created_at else max(last_created_at, dates["created_at"])
+    #         first_deleted_at = dates["deleted_at"] if not first_deleted_at else min(first_deleted_at, dates["deleted_at"])
+    #         last_deleted_at = dates["deleted_at"] if not last_deleted_at else max(last_deleted_at, dates["deleted_at"])
+
+    #     # print(first_created_at, last_created_at)
+    #     # print(first_deleted_at, last_deleted_at)
+            
+    # except KeyboardInterrupt:
+    #     ...
+
+    # print(pods_measurements)
