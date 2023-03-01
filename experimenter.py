@@ -206,7 +206,6 @@ class Experimenter():
                     ready_replicas = event_object['status']['ready_replicas']
                     watcher_dict['ready_replica_counts'].append(ready_replicas)
 
-
         for s in range(self.config.steps):
             errors_rised = []
             watcher_dict = {
@@ -261,8 +260,8 @@ class Experimenter():
                 cool_period=self.config.cooldown,
                 framework=self.config.framework,
                 replicas=self.config.replicas,
-                step=int(s),
-                total_steps=self.config.steps,
+                step=int(s), # Change this to round
+                total_steps=self.config.steps, # total_round
                 error_occured=exception_occured,
                 errors_rised=[str(e) for e in errors_rised],
                 driver=self.config.driver,
