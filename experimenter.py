@@ -198,6 +198,8 @@ class Experimenter():
             '''There is no need for locking watcher_dict, no concurrent access.'''
             w = watch.Watch()
             appsv1 = client.AppsV1Api()
+            watcher_dict["modified_at"] = []
+            watcher_dict["ready_replica_counts"] = []
 
             for event in w.stream(appsv1.list_namespaced_deployment, namespace=self.config.namespace):
                 event_type = event['type']
@@ -278,7 +280,7 @@ class Experimenter():
             watcher_dict_pods = {}
 
             event_thread_deployment = threading.Thread(target=event_thread_deployment_fn, args=[watcher_dict,])
-            event_thread_pods = threading.Thread(target=event_thread_deployment_fn, args=[watcher_dict_pods,])
+            event_thread_pods = threading.Thread(target=event_thread_pods_fn, args=[watcher_dict_pods,])
             event_thread_deployment.start()
             event_thread_pods.start()
             time.sleep(0.5)
@@ -542,7 +544,7 @@ def experiment_with(framework, driver, num_step, replica_list, cooldown_list):
 
 # if __name__ == "__main__":
     # experiment_with("native", "minikube", 1, [1], [1])
-    
+
     # config.load_kube_config()
     # w = watch.Watch()
     # v1 = client.CoreV1Api()
