@@ -93,6 +93,8 @@ class ExperimentRound():
     last_created_at: datetime
     first_deleted_at: datetime 
     last_deleted_at: datetime
+    first_scheduled_at: datetime 
+    last_scheduled_at: datetime
 
 def append_to_feather(filename, new_df: pd.DataFrame):
     if os.path.exists(filename):
@@ -223,6 +225,8 @@ class Experimenter():
             last_created_at = None
             first_deleted_at = None 
             last_deleted_at = None 
+            first_scheduled_at = None 
+            last_scheduled_at = None 
             number_of_pods = 0
 
             for event in w.stream(v1.list_namespaced_pod, namespace="experiments"):
@@ -242,6 +246,10 @@ class Experimenter():
                     pods_measurements[pod_name]["deleted_at"] = datetime.now()
                     pods_measurements[pod_name]["pods_started_time"] = event_object["status"]["start_time"]
                     number_of_pods -= 1
+                else:
+                    if "scheduled_at" not in pods_measurements[pod_name]:
+                        pods_measurements[pod_name]["scheduled_at"] = datetime.now()
+
                 if number_of_pods == 0: w.stop()
             
             for pod_name, dates in pods_measurements.items():
@@ -249,11 +257,15 @@ class Experimenter():
                 last_created_at = dates["created_at"] if not last_created_at else max(last_created_at, dates["created_at"])
                 first_deleted_at = dates["deleted_at"] if not first_deleted_at else min(first_deleted_at, dates["deleted_at"])
                 last_deleted_at = dates["deleted_at"] if not last_deleted_at else max(last_deleted_at, dates["deleted_at"])
+                first_scheduled_at = dates["scheduled_at"] if not first_scheduled_at else min(first_scheduled_at, dates["scheduled_at"])
+                last_scheduled_at = dates["scheduled_at"] if not last_scheduled_at else max(last_scheduled_at, dates["scheduled_at"])
             
             event_thread_pods["first_created_at"] = first_created_at 
             event_thread_pods["last_created_at"] = last_created_at
             event_thread_pods["first_deleted_at"] = first_deleted_at 
             event_thread_pods["last_deleted_at"] = last_deleted_at 
+            event_thread_pods["first_scheduled_at"] = first_scheduled_at 
+            event_thread_pods["last_scheduled_at"] = last_scheduled_at 
 
         for s in range(self.config.steps):
             errors_rised = []
@@ -300,8 +312,6 @@ class Experimenter():
 
             exception_occured = len([e for e in errors_rised if e != None]) != 0
 
-
-
             experiment_list.append(ExperimentRound(
                 # Measurements of the experiment
                 before_create_timestamp=before_create_timestamp,
@@ -333,6 +343,8 @@ class Experimenter():
                 last_created_at=watcher_dict_pods["last_created_at"],
                 first_deleted_at=watcher_dict_pods["first_deleted_at"], 
                 last_deleted_at=watcher_dict_pods["last_deleted_at"],
+                first_scheduled_at=watcher_dict_pods["first_scheduled_at"], 
+                last_scheduled_at=watcher_dict_pods["last_scheduled_at"],
             ))
 
         return experiment_list
@@ -528,8 +540,9 @@ def experiment_with(framework, driver, num_step, replica_list, cooldown_list):
 
     print("Done!")
 
-if __name__ == "__main__":
-    experiment_with("native", "minikube", 1, [1], [1])
+# if __name__ == "__main__":
+    # experiment_with("native", "minikube", 1, [1], [1])
+    
     # config.load_kube_config()
     # w = watch.Watch()
     # v1 = client.CoreV1Api()
@@ -539,6 +552,8 @@ if __name__ == "__main__":
     # last_created_at = None
     # first_deleted_at = None 
     # last_deleted_at = None 
+    # first_scheduled_at = None 
+    # last_scheduled_at = None 
     # number_of_pods = 0
 
     # try:
@@ -559,6 +574,11 @@ if __name__ == "__main__":
     #             pods_measurements[pod_name]["deleted_at"] = datetime.now()
     #             pods_measurements[pod_name]["pods_started_time"] = event_object["status"]["start_time"]
     #             number_of_pods -= 1
+    #         else:
+    #             if "scheduled_at" not in pods_measurements[pod_name]:
+    #                 pods_measurements[pod_name]["scheduled_at"] = datetime.now()
+    #                 print("scheduled!")
+
     #         if number_of_pods == 0: w.stop()
         
     #     for pod_name, dates in pods_measurements.items():
@@ -566,11 +586,14 @@ if __name__ == "__main__":
     #         last_created_at = dates["created_at"] if not last_created_at else max(last_created_at, dates["created_at"])
     #         first_deleted_at = dates["deleted_at"] if not first_deleted_at else min(first_deleted_at, dates["deleted_at"])
     #         last_deleted_at = dates["deleted_at"] if not last_deleted_at else max(last_deleted_at, dates["deleted_at"])
+    #         first_scheduled_at = dates["scheduled_at"] if not first_scheduled_at else min(first_scheduled_at, dates["scheduled_at"])
+    #         last_scheduled_at = dates["scheduled_at"] if not last_scheduled_at else max(last_scheduled_at, dates["scheduled_at"])
 
     #     # print(first_created_at, last_created_at)
     #     # print(first_deleted_at, last_deleted_at)
+    #     print(first_scheduled_at, last_scheduled_at)
             
     # except KeyboardInterrupt:
     #     ...
 
-    # print(pods_measurements)
+    # # print(pods_measurements)
