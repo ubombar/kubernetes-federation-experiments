@@ -30,4 +30,7 @@ DRIVER = "minikube" # minikube, kwok, native
 FRAMEWORK = "native" # native, edgenet (Nisan ortasi) | liqo, kubefed (Sonradan)
 # EdgeNet scalability test, how many compute cluster can be tested...
 
-experimenter.experiment_with(FRAMEWORK, DRIVER, EXPERIMENT_REPITITION, REPLICAS.tolist(), COOLDOWNS.tolist())
+filename = experimenter.experiment_with(FRAMEWORK, DRIVER, EXPERIMENT_REPITITION, REPLICAS.tolist(), COOLDOWNS.tolist())
+# filename = experimenter.experiment_with(FRAMEWORK, DRIVER, 1, [1], [1])
+
+print(filename)

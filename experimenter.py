@@ -541,6 +541,7 @@ def experiment_with(framework, driver, num_step, replica_list, cooldown_list):
         append_to_feather(filename, results_df)
 
     print("Done!")
+    return filename
 
 # if __name__ == "__main__":
     # experiment_with("native", "minikube", 1, [1], [1])
