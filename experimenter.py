@@ -76,17 +76,17 @@ class ExperimentRound():
     driver: str
 
     # Command used to run the container
-    command: list[str]
+    command: list
 
     # Event timestamps
     event_created_at: datetime
     event_deleted_at: datetime
 
     # Timestamp list for each modificaion event
-    event_modified_at: list[datetime]
+    event_modified_at: list
 
     # Number of replicas for each event received
-    event_replicas_at: list[datetime]
+    event_replicas_at: list
     
     # Pod metrics, when deployment controller creates and deletes pod objects
     first_created_at: datetime
@@ -126,7 +126,7 @@ class ExperimentConfig():
     steps: int
 
     # Container command
-    container_command: list[str]
+    container_command: list
     
     # Namespace
     namespace: str = "experiments"
@@ -237,7 +237,7 @@ class Experimenter():
         
                 # if not event_object['metadata']['name'] == self.config.deployment_name: continue
         
-                print(f"evet_type: {event_type}")
+                # print(f"evet_type: {event_type}")
                 # print(event_object.keys()) # 'api_version', 'kind', 'metadata', 'spec', 'status'
                 pod_name = event_object["metadata"]["name"]
 
