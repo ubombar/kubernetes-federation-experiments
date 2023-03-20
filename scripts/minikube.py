@@ -21,12 +21,16 @@ def minikube_deployment_type_experiment(replicas) -> dict:
         "namespace": "default",
         "first_sleep_seconds": 1,
         "second_sleep_seconds": 1,
-        "event_list": [],
+        "deployment_event_list": list(),
+        "pods_event_dict": collections.defaultdict(list),
         "replicas": replicas,
     }
 
-    deployment_thread = threading.Thread(target=retrieve_deployment_events, args=[result["namespace"], result["deployment_name"], result["event_list"]])
+    deployment_thread = threading.Thread(target=retrieve_deployment_events, args=[result["namespace"], result["deployment_name"], result["deployment_event_list"]])
     deployment_thread.start()
+
+    pods_thread = threading.Thread(target=retrieve_pods_events, args=[result["namespace"], result["pods_event_dict"]])
+    pods_thread.start()
 
     result["time_before_create"] = str(datetime.now())
     util_create_deployment(result["namespace"], result["deployment_name"], result["replicas"])
@@ -44,35 +48,47 @@ def minikube_deployment_type_experiment(replicas) -> dict:
     time.sleep(result["second_sleep_seconds"])
 
     deployment_thread.join()
+    pods_thread.join()
 
     return result
 
-def minikube_pod_type_experiment(pod_count) -> dict:
+def minikube_deployments_type_experiment(deployment_count) -> dict:
     config.load_kube_config()
     result = {
         "namespace": "default",
         "first_sleep_seconds": 1,
         "second_sleep_seconds": 1,
-        "pod_count": pod_count,
+        "deployments_event_dict": collections.defaultdict(list),
+        "pods_event_dict": collections.defaultdict(list),
+        "deployment_count": deployment_count,
     }
 
+    deployments_thread = threading.Thread(target=retrieve_deployments_events, args=[result["namespace"], result["deployments_event_dict"]])
+    deployments_thread.start()
+    
+    pods_thread = threading.Thread(target=retrieve_pods_events, args=[result["namespace"], result["pods_event_dict"]])
+    pods_thread.start()
+
     result["time_before_create"] = str(datetime.now())
-    util_create_pods(result["namespace"], result["pod_count"])
+    util_create_deployments(result["namespace"], result["deployment_count"])
 
     result["time_before_wait"] = str(datetime.now())
-    util_wait_until_pods_ready(result["namespace"], result["pod_count"])
+    util_wait_until_deployments_ready(result["namespace"], result["deployment_count"])
 
     result["time_before_sleep1"] = str(datetime.now())
     time.sleep(result["first_sleep_seconds"])
 
     result["time_before_delete"] = str(datetime.now())
-    util_delete_pods(result["namespace"], result["pod_count"])
+    util_delete_deployments(result["namespace"], result["deployment_count"])
     
     result["time_before_sleep2"] = str(datetime.now())
     time.sleep(result["second_sleep_seconds"])
 
+    deployments_thread.join()
+    pods_thread.join()
+
     return result
 
-r = minikube_pod_type_experiment(1)
+r = minikube_deployments_type_experiment(2)
 
 print(json.dumps(r, indent=2))
