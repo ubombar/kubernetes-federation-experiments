@@ -24,6 +24,14 @@ import json
 #     first_sleep_seconds: float
 #     second_sleep_seconds: float
 
+def generate_name():
+    current_date = datetime.now()
+    return f"{str(current_date).split('.')[0].replace(' ', '_').replace('-', '').replace(':', '')}.json"
+
+def save_json(filepath, experiment_object):
+    with open(filepath, 'w') as f:
+        json.dump(experiment_object, f)
+
 def util_wait_until_deployment_ready(namespace, deployment_name, timeout=None):
     w = watch.Watch()
     appsv1 = client.AppsV1Api()
