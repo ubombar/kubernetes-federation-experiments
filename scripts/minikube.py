@@ -112,7 +112,7 @@ def experiment_deployments(pod_counts: list[int], single_deployment: bool, num_i
 
 if __name__ == "__main__":
     print("Experiment: single_deployment")
-    experiment_deployments([1, 5, 20], False, 5)
+    experiment_deployments([1, 5, 20], False, 50)
 
     print("Experiment: multi_deployment")
-    experiment_deployments([1, 5, 20], True, 5)
+    experiment_deployments([1, 5, 20], True, 50)
