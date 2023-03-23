@@ -10,7 +10,7 @@ from dataclasses import dataclass
 import os
 import numpy as np 
 import collections 
-from  minikube_util import *
+from  scripts.util import *
 import threading
 import json
 from tqdm import tqdm

@@ -279,3 +279,66 @@ def retrieve_pods_events(namespace, event_dict: dict[list]):
                 "phase": pod_phase,
                 "time": str(datetime.now()),
             })
+
+def retrieve_selectivedeployments_events(namespace, event_dict: dict[list], context: str=None) -> list[dict]:
+    config.load_config(context=context)
+    w = watch.Watch()
+    coa = client.CustomObjectsApi()
+
+    for event in w.stream(coa.list_namespaced_custom_object, namespace=namespace, group="apps.edgenet.io", version="v1alpha2", plural="selectivedeployments"):
+        event_type = event['type']
+        event_object = event['object'].to_dict()
+
+        selectivedeployment_name = event_object['metadata']['name']
+
+        if event_type == "ADDED":
+            event_dict[selectivedeployment_name].append({
+                "name": selectivedeployment_name,
+                "type": "created",
+                "time": str(datetime.now()),
+            })
+        elif event_type == "DELETED":
+            event_dict[selectivedeployment_name].append({
+                "name": selectivedeployment_name,
+                "type": "deleted",
+                "time": str(datetime.now()),
+            })
+            w.stop() # STOP IF THE OBJECT IS DELETED
+        else:
+            event_dict[selectivedeployment_name].append({
+                "name": selectivedeployment_name,
+                "type": "modified",
+                "time": str(datetime.now()),
+            })
+
+def retrieve_selectivedeploymentanchors_events(namespace, event_dict: dict[list], context: str=None) -> list[dict]:
+    config.load_config(context=context)
+    w = watch.Watch()
+    coa = client.CustomObjectsApi()
+
+    for event in w.stream(coa.list_namespaced_custom_object, namespace=namespace, group="federation.edgenet.io", version="v1alpha1", plural="selectivedeploymentanchors"):
+        event_type = event['type']
+        event_object = event['object'].to_dict()
+
+        selectivedeploymentanchor_name = event_object['metadata']['name']
+
+        if event_type == "ADDED":
+            event_dict[selectivedeploymentanchor_name].append({
+                "name": selectivedeploymentanchor_name,
+                "type": "created",
+                "time": str(datetime.now()),
+            })
+        elif event_type == "DELETED":
+            event_dict[selectivedeploymentanchor_name].append({
+                "name": selectivedeploymentanchor_name,
+                "type": "deleted",
+                "time": str(datetime.now()),
+            })
+            w.stop() # STOP IF THE OBJECT IS DELETED
+        else:
+            event_dict[selectivedeploymentanchor_name].append({
+                "name": selectivedeploymentanchor_name,
+                "type": "modified",
+                "time": str(datetime.now()),
+            })
+
