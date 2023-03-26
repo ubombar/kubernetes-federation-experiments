@@ -6,7 +6,7 @@ sudo apt install software-properties-common -y
 sudo add-apt-repository ppa:deadsnakes/ppa -y
 
 # Install
-sudo apt install python3.10
+sudo apt install python3.10 -y
 curl -sS https://bootstrap.pypa.io/get-pip.py | python3.10
 python3.10 -m pip install --upgrade pip
 
