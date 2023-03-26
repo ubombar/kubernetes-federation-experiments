@@ -10,7 +10,7 @@ from dataclasses import dataclass
 import os
 import numpy as np 
 import collections 
-from  scripts.util import *
+from  util import *
 import threading
 import json
 from tqdm import tqdm
