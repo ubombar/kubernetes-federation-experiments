@@ -1,0 +1,26 @@
+apiVersion: registration.edgenet.io/v1alpha1
+kind: TenantRequest
+metadata:
+  name: test
+spec:
+  approved: false
+  fullname: EdgeNet
+  shortname: EdgeNet
+  url: http://www.edge-net.org/
+  address:
+    street: 4 place Jussieu, boite 169
+    zip: "75005"
+    city: Paris
+    region: Île-de-France
+    country: France
+  contact:
+    firstname: Berat
+    lastname: Senel
+    email: beratcansenel@gmail.com
+    phone: "+33XXXXXXXXX"
+  clusternetworkpolicy: false
+  resourceallocation:
+    cpu: "8000m"
+    memory: "8Gi"
+    edge-net.io/ingress-bandwidth: "8Gi"
+    edge-net.io/egress-bandwidth: "8Gi"

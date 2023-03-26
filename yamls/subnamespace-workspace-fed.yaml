@@ -1,0 +1,17 @@
+apiVersion: core.edgenet.io/v1alpha1
+kind: SubNamespace
+metadata:
+  name: test
+  namespace: test
+spec:
+  workspace:
+    resourceallocation:
+      cpu: "4000m"
+      memory: "4Gi"
+      edge-net.io/ingress-bandwidth: "4Gi"
+      edge-net.io/egress-bandwidth: "4Gi"
+    inheritance:
+      rbac: true
+      networkpolicy: false
+    scope: federation
+    sync: false
