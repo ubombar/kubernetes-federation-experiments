@@ -133,3 +133,5 @@ test.py
 custom-resource.yaml
 .gitignore
 custom-resource-object.yaml
+
+.old/**

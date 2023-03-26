@@ -16,7 +16,7 @@ import json
 from tqdm import tqdm
 import itertools
 
-def minikube_deployment_type_experiment(pod_count, namespace, first_sleep_seconds, second_sleep_seconds) -> dict:
+def native_deployment_type_experiment(pod_count, namespace, first_sleep_seconds, second_sleep_seconds) -> dict:
     config.load_kube_config()
     result = {
         "deployment_events": list(),
@@ -51,7 +51,7 @@ def minikube_deployment_type_experiment(pod_count, namespace, first_sleep_second
     result["time_before_end"] = str(datetime.now())
     return result
 
-def minikube_deployments_type_experiment(pod_count, namespace, first_sleep_seconds, second_sleep_seconds) -> dict:
+def native_deployments_type_experiment(pod_count, namespace, first_sleep_seconds, second_sleep_seconds) -> dict:
     config.load_kube_config()
     result = {
         "deployment_events": collections.defaultdict(list),
@@ -93,13 +93,13 @@ def experiment_deployments(pod_counts: list[int], single_deployment: bool, num_i
     for pod_count, iteration in tqdm(itertools.product(pod_counts, range(num_iterations)), total=len(pod_counts)*num_iterations):
         data = None
         if single_deployment:
-            data = minikube_deployment_type_experiment(pod_count, namespace, first_sleep, second_sleep)
+            data = native_deployment_type_experiment(pod_count, namespace, first_sleep, second_sleep)
         else:
-            data = minikube_deployments_type_experiment(pod_count, namespace, first_sleep, second_sleep)
+            data = native_deployments_type_experiment(pod_count, namespace, first_sleep, second_sleep)
 
         experiment = {
             "data": data,
-            "framework": "minikube",
+            "framework": "native",
             "iteration": iteration,
             "num_iterations": num_iterations,
             "pod_count": pod_count,
