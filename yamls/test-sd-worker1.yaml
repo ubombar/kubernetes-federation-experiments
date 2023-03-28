@@ -15,27 +15,26 @@ apiVersion: apps.edgenet.io/v1alpha2
 kind: SelectiveDeployment
 metadata:
   name: workload01
-  # namespace: c79ef63e-d050-43a9-852b-51d5161c68cf-test-36550d27
   namespace: 71959dc7-5064-4ad1-b72a-a0cbe6a7df5c-test-34390dac
 spec:
   workloads:
-    daemonset:
+    deployment:
       - apiVersion: apps/v1
         kind: Deployment
         metadata:
-          name: traceroute
+          name: test-deployment
           namespace: 71959dc7-5064-4ad1-b72a-a0cbe6a7df5c-test-34390dac
           labels:
-            app: traceroute
+            app: test
         spec:
           replicas: 1
           selector:
             matchLabels:
-              app: traceroute
+              app: test
           template:
             metadata:
               labels:
-                app: traceroute
+                app: test
             spec:
               hostNetwork: true
               tolerations:
@@ -43,10 +42,9 @@ spec:
                   operator: Exists
                   effect: NoSchedule
               containers:
-                - name: traceroute
-                  image: bsenel/visual-traceroute
-                  ports:
-                  - containerPort: 8080
+                - name: test-container
+                  image: busybox
+                  command: ["/bin/sh", "-c", "sleep 9999"]
                   resources:
                     limits:
                       cpu: 100m
@@ -59,3 +57,4 @@ spec:
     matchLabels:
       edge-net.io/city: Izmir
   clusterReplicas: 1
+

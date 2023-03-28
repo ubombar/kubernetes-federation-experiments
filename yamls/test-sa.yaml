@@ -1,0 +1,41 @@
+apiVersion: apps.edgenet.io/v1alpha2
+kind: SelectiveDeployment
+metadata:
+  name: test-selectivedeployment
+  namespace: 71959dc7-5064-4ad1-b72a-a0cbe6a7df5c-test-34390dac
+spec:
+  workloads:
+    deployment:
+      - apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: test-deployment
+          namespace: 71959dc7-5064-4ad1-b72a-a0cbe6a7df5c-test-34390dac
+          labels:
+            app: test
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: test
+          template:
+            metadata:
+              labels:
+                app: test
+            spec:
+              containers:
+                - name: test-container
+                  image: busybox
+                  command: ["/bin/sh", "-c", "sleep 9999"]
+                  resources:
+                    limits:
+                      cpu: 200m
+                      memory: 200Mi
+                    requests:
+                      cpu: 200m
+                      memory: 200Mi
+              terminationGracePeriodSeconds: 0
+  clusterAffinity:
+    matchLabels:
+      edge-net.io/city: Izmir
+  clusterReplicas: 1
