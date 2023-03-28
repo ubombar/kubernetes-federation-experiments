@@ -342,3 +342,88 @@ def retrieve_selectivedeploymentanchors_events(namespace, event_dict: dict[list]
                 "time": str(datetime.now()),
             })
 
+
+def util_create_selectivedeployment(selectivedeployment_namespace, selectivedeployment_name, deployment_name, deployment_replicas):
+    coa = client.CustomObjectsApi()
+
+    deployment_object = {
+        'api_version': "apps.edgenet.io/v1alpha2",
+        'kind': "Deployment",
+        'metadata': {
+                'name': deployment_name,
+                'namespace': selectivedeployment_namespace,
+            },
+        'spec': {
+            'replicas': deployment_replicas,
+            'selector': {'match_labels': {'app': 'test'}},
+            'template': {
+                'metadata': {'labels': {'app': 'test'}},
+                'spec': {
+                    'terminationGracePeriodSeconds': 0,
+                    'containers': [
+                            {
+                                'image': 'busybox',
+                                'command': ['/bin/sh', '-c', 'sleep 9999'],
+                                'name': 'test-container',
+                                'resources': {
+                                    'limits': {
+                                        'cpu': '200m',
+                                        'memory': '200Mi'
+                                    },
+                                    'requests': {
+                                        'cpu': '200m',
+                                        'memory': '200Mi'
+                                    }
+                                }
+                            }
+                        ],
+                }
+            }
+        }
+    }
+
+    selectivedeployment_object = {
+        'apiVersion': 'apps.edgenet.io/v1alpha2',
+        'kind': 'SelectiveDeployment',
+        'metadata': {
+            'name': selectivedeployment_name,
+            'namespace': selectivedeployment_namespace
+        },
+        'spec': {
+            'workloads': {
+                'deployment': [
+                    deployment_object
+                ]
+            },
+            'clusterAffinity': {
+                'matchLabels': {
+                    'edge-net.io/city': 'Izmir'
+                }
+            },
+            'clusterReplicas': 1
+        }
+    }
+
+    try:
+        coa.create_namespaced_custom_object(group="apps.edgenet.io", namespace=selectivedeployment_namespace, version="v1alpha2", plural="selectivedeployments", body=selectivedeployment_object)
+    except client.ApiException as e:
+        return e
+
+def util_delete_selectivedeployment(namespace, deployment_name):
+    appsv1 = client.AppsV1Api()
+
+    try:
+        appsv1.delete_namespaced_deployment(name=deployment_name, namespace=namespace)
+    except client.ApiException as e:
+        return e
+    
+
+
+
+selectivedeployment_name = 'test-selectivedeployment'
+selectivedeployment_namespace = '71959dc7-5064-4ad1-b72a-a0cbe6a7df5c-test-34390dac'
+deployment_name = "test-deployment"
+deployment_replicas = 1
+
+util_create_selectivedeployment(selectivedeployment_namespace, selectivedeployment_name, deployment_name, deployment_replicas)
+
