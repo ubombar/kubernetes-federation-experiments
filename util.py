@@ -512,6 +512,90 @@ def util_create_selectivedeployment(kubeconfig_file, selectivedeployment_namespa
         except client.ApiException as e:
             return e
 
+def util_create_selectivedeployments(kubeconfig_file, selectivedeployment_namespace, selectivedeployment_name, deployment_name, selectivedeployment_count):
+    configuration = client.Configuration()
+    config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
+
+    with client.ApiClient(configuration) as api_client:
+        coa = client.CustomObjectsApi(api_client)
+
+        for i in range(selectivedeployment_count):
+            deployment_object = client.V1Deployment(
+                    api_version="v1",
+                    kind="Deployment",
+                    metadata=client.V1ObjectMeta(
+                        name=f"{deployment_name}-{i}",
+                        labels={
+                            'app': 'test'
+                        },
+                    ),
+                    spec=client.V1DeploymentSpec(
+                        replicas=1,
+                        selector=client.V1LabelSelector(
+                            match_labels={
+                                'app': 'test',
+                            },
+                        ),
+                        template=client.V1PodTemplateSpec(
+                            metadata=client.V1ObjectMeta(
+                                labels={
+                                    'app': 'test',
+                                },
+                            ),
+                            spec=client.V1PodSpec(
+                                termination_grace_period_seconds=0,
+                                containers=[
+                                    client.V1Container(
+                                        name="test-container",
+                                        image="busybox",
+                                        command=["/bin/sh", "-c", "sleep 9999"],
+                                        resources=client.V1ResourceRequirements(
+                                            limits={
+                                                'cpu': '200m',
+                                                'memory': '200Mi'
+                                            },
+                                            requests={
+                                                'cpu': '200m',
+                                                'memory': '200Mi'
+                                            }
+                                        ),
+                                    ),
+                                ]
+                            )
+                        )
+                    ))
+
+            selectivedeployment_object = {
+                'apiVersion': 'apps.edgenet.io/v1alpha2',
+                'kind': 'SelectiveDeployment',
+                'metadata': {
+                    'name': f"{selectivedeployment_name}-{i}",
+                    'namespace': selectivedeployment_namespace
+                },
+                'spec': {
+                    'workloads': {
+                        'deployment': [
+                            deployment_object
+                        ]
+                    },
+                    'clusterAffinity': {
+                        'matchLabels': {
+                            'edge-net.io/city': 'Izmir'
+                        }
+                    },
+                    'clusterReplicas': 1
+                }
+            }
+
+            try:
+                r = coa.create_namespaced_custom_object(group="apps.edgenet.io", 
+                                                    namespace=selectivedeployment_namespace, 
+                                                    version="v1alpha2", 
+                                                    plural="selectivedeployments", 
+                                                    body=selectivedeployment_object)
+            except client.ApiException as e:
+                return e
+
 def util_delete_selectivedeployment(kubeconfig_file, namespace, selectivedeployment_name):
     configuration = client.Configuration()
     config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
@@ -528,6 +612,23 @@ def util_delete_selectivedeployment(kubeconfig_file, namespace, selectivedeploym
         except client.ApiException as e:
             return e
 
+def util_delete_selectivedeployments(kubeconfig_file, namespace, selectivedeployment_name, selectivedeployment_count):
+    configuration = client.Configuration()
+    config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
+
+    with client.ApiClient(configuration) as api_client:
+        coa = client.CustomObjectsApi(api_client)
+
+        for i in range(selectivedeployment_count):
+            try:
+                coa.delete_namespaced_custom_object(name=f"{selectivedeployment_name}-{i}", 
+                                                namespace=namespace, 
+                                                group="apps.edgenet.io", 
+                                                version="v1alpha2", 
+                                                plural="selectivedeployments")
+            except client.ApiException as e:
+                return e
+
 def util_delete_selectivedeploymentanchors(kubeconfig_file, namespace):
     configuration = client.Configuration()
     config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
@@ -543,6 +644,8 @@ def util_delete_selectivedeploymentanchors(kubeconfig_file, namespace):
         except client.ApiException as e:
             return e
     
+
+
 # if __name__ == "__main__":
 #     configuration = client.Configuration()
 #     config.load_kube_config(config_file="~/.kube/config-worker-2", client_configuration=configuration)
