@@ -354,7 +354,6 @@ def retrieve_selectivedeployment_events(kubeconfig_file, namespace, selectivedep
                 event_list.append({
                     "name": selectivedeployment_name,
                     "type": "modified",
-                    "ready_replicas": event_object['status']['ready_replicas'],
                     "time": str(datetime.now()),
                 })
 
@@ -400,7 +399,11 @@ def retrieve_selectivedeploymentanchors_events(kubeconfig_file, namespace, event
         coa = client.CustomObjectsApi(api_client)
         w = watch.Watch()
 
-        for event in w.stream(coa.list_namespaced_custom_object, namespace=namespace, group="federation.edgenet.io", version="v1alpha1", plural="selectivedeploymentanchors"):
+        for event in w.stream(coa.list_namespaced_custom_object, 
+                              namespace=namespace, 
+                              group="federation.edgenet.io", 
+                              version="v1alpha1", 
+                              plural="selectivedeploymentanchors"):
             event_type = event['type']
             event_object = event['object']
 
