@@ -124,7 +124,6 @@ def retrieve_deployment_events(kubeconfig_file, namespace, deployment_name, even
     with client.ApiClient(configuration) as api_client:
         w = watch.Watch()
         appsv1 = client.AppsV1Api(api_client)
-        w = watch.Watch()
 
         for event in w.stream(appsv1.list_namespaced_deployment, namespace=namespace):
             event_type = event['type']
@@ -322,7 +321,7 @@ def retrieve_pods_events(kubeconfig_file, namespace, event_dict: dict[list]):
                     "time": str(datetime.now()),
                 })
 
-def retrieve_selectivedeployments_events(kubeconfig_file, namespace, event_dict: dict[list], context: str=None) -> list[dict]:
+def retrieve_selectivedeployment_events(kubeconfig_file, namespace, selectivedeployment_name, event_list) -> list[dict]:
     configuration = client.Configuration()
     config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
 
@@ -332,7 +331,44 @@ def retrieve_selectivedeployments_events(kubeconfig_file, namespace, event_dict:
 
         for event in w.stream(coa.list_namespaced_custom_object, namespace=namespace, group="apps.edgenet.io", version="v1alpha2", plural="selectivedeployments"):
             event_type = event['type']
-            event_object = event['object'].to_dict()
+            event_object = event['object']
+
+            if not event_object['metadata']['name'] == selectivedeployment_name: continue
+
+            if event_type == "ADDED":
+                event_list.append({
+                    "name": selectivedeployment_name,
+                    "type": "created",
+                    "ready_replicas": None,
+                    "time": str(datetime.now()),
+                })
+            elif event_type == "DELETED":
+                event_list.append({
+                    "name": selectivedeployment_name,
+                    "type": "deleted",
+                    "ready_replicas": None,
+                    "time": str(datetime.now()),
+                })
+                w.stop() # STOP IF IT DEPLOYMENT IS DELETED
+            else:
+                event_list.append({
+                    "name": selectivedeployment_name,
+                    "type": "modified",
+                    "ready_replicas": event_object['status']['ready_replicas'],
+                    "time": str(datetime.now()),
+                })
+
+def retrieve_selectivedeployments_events(kubeconfig_file, namespace, event_dict: dict[list]) -> list[dict]:
+    configuration = client.Configuration()
+    config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
+
+    with client.ApiClient(configuration) as api_client:
+        coa = client.CustomObjectsApi(api_client)
+        w = watch.Watch()
+
+        for event in w.stream(coa.list_namespaced_custom_object, namespace=namespace, group="apps.edgenet.io", version="v1alpha2", plural="selectivedeployments"):
+            event_type = event['type']
+            event_object = event['object']
 
             selectivedeployment_name = event_object['metadata']['name']
 
@@ -356,7 +392,7 @@ def retrieve_selectivedeployments_events(kubeconfig_file, namespace, event_dict:
                     "time": str(datetime.now()),
                 })
 
-def retrieve_selectivedeploymentanchors_events(kubeconfig_file, namespace, event_dict: dict[list], context: str=None) -> list[dict]:
+def retrieve_selectivedeploymentanchors_events(kubeconfig_file, namespace, event_dict: dict[list]) -> list[dict]:
     configuration = client.Configuration()
     config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
 
@@ -366,7 +402,7 @@ def retrieve_selectivedeploymentanchors_events(kubeconfig_file, namespace, event
 
         for event in w.stream(coa.list_namespaced_custom_object, namespace=namespace, group="federation.edgenet.io", version="v1alpha1", plural="selectivedeploymentanchors"):
             event_type = event['type']
-            event_object = event['object'].to_dict()
+            event_object = event['object']
 
             selectivedeploymentanchor_name = event_object['metadata']['name']
 
@@ -389,7 +425,6 @@ def retrieve_selectivedeploymentanchors_events(kubeconfig_file, namespace, event
                     "type": "modified",
                     "time": str(datetime.now()),
                 })
-
 
 def util_create_selectivedeployment(kubeconfig_file, selectivedeployment_namespace, selectivedeployment_name, deployment_name, deployment_replicas):
     configuration = client.Configuration()
@@ -505,3 +540,21 @@ def util_delete_selectivedeploymentanchors(kubeconfig_file, namespace):
         except client.ApiException as e:
             return e
     
+# if __name__ == "__main__":
+#     configuration = client.Configuration()
+#     config.load_kube_config(config_file="~/.kube/config-worker-2", client_configuration=configuration)
+
+#     with client.ApiClient(configuration) as api_client:
+#         coa = client.CustomObjectsApi(api_client)
+
+#         response = coa.list_namespaced_custom_object(group="apps.edgenet.io", namespace="71959dc7-5064-4ad1-b72a-a0cbe6a7df5c-test-34390dac", plural="selectivedeployments", version="v1alpha2")
+        
+#         for item in response['items']:
+#             print(item['metadata']['name'])
+
+#     # w = watch.Watch()
+
+#     # for event in w.stream(coa.list_namespaced_custom_object, group="apps.edgenet.io", namespace="71959dc7-5064-4ad1-b72a-a0cbe6a7df5c-test-34390dac", plural="selectivedeployments", version="v1alpha2"):
+#     #     print(event['type'])
+
+#     # print(response["items"][0]["metadata"]["name"])
