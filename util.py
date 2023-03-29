@@ -280,65 +280,196 @@ def retrieve_pods_events(namespace, event_dict: dict[list]):
                 "time": str(datetime.now()),
             })
 
-def retrieve_selectivedeployments_events(namespace, event_dict: dict[list], context: str=None) -> list[dict]:
-    config.load_config(context=context)
-    w = watch.Watch()
-    coa = client.CustomObjectsApi()
+def retrieve_selectivedeployments_events(kubeconfig_file, namespace, event_dict: dict[list], context: str=None) -> list[dict]:
+    configuration = client.Configuration()
+    config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
 
-    for event in w.stream(coa.list_namespaced_custom_object, namespace=namespace, group="apps.edgenet.io", version="v1alpha2", plural="selectivedeployments"):
-        event_type = event['type']
-        event_object = event['object'].to_dict()
+    with client.ApiClient(configuration) as api_client:
+        coa = client.CustomObjectsApi(api_client)
+        w = watch.Watch()
 
-        selectivedeployment_name = event_object['metadata']['name']
+        for event in w.stream(coa.list_namespaced_custom_object, namespace=namespace, group="apps.edgenet.io", version="v1alpha2", plural="selectivedeployments"):
+            event_type = event['type']
+            event_object = event['object'].to_dict()
 
-        if event_type == "ADDED":
-            event_dict[selectivedeployment_name].append({
-                "name": selectivedeployment_name,
-                "type": "created",
-                "time": str(datetime.now()),
-            })
-        elif event_type == "DELETED":
-            event_dict[selectivedeployment_name].append({
-                "name": selectivedeployment_name,
-                "type": "deleted",
-                "time": str(datetime.now()),
-            })
-            w.stop() # STOP IF THE OBJECT IS DELETED
-        else:
-            event_dict[selectivedeployment_name].append({
-                "name": selectivedeployment_name,
-                "type": "modified",
-                "time": str(datetime.now()),
-            })
+            selectivedeployment_name = event_object['metadata']['name']
 
-def retrieve_selectivedeploymentanchors_events(namespace, event_dict: dict[list], context: str=None) -> list[dict]:
-    config.load_config(context=context)
-    w = watch.Watch()
-    coa = client.CustomObjectsApi()
+            if event_type == "ADDED":
+                event_dict[selectivedeployment_name].append({
+                    "name": selectivedeployment_name,
+                    "type": "created",
+                    "time": str(datetime.now()),
+                })
+            elif event_type == "DELETED":
+                event_dict[selectivedeployment_name].append({
+                    "name": selectivedeployment_name,
+                    "type": "deleted",
+                    "time": str(datetime.now()),
+                })
+                w.stop() # STOP IF THE OBJECT IS DELETED
+            else:
+                event_dict[selectivedeployment_name].append({
+                    "name": selectivedeployment_name,
+                    "type": "modified",
+                    "time": str(datetime.now()),
+                })
 
-    for event in w.stream(coa.list_namespaced_custom_object, namespace=namespace, group="federation.edgenet.io", version="v1alpha1", plural="selectivedeploymentanchors"):
-        event_type = event['type']
-        event_object = event['object'].to_dict()
+def retrieve_selectivedeploymentanchors_events(kubeconfig_file, namespace, event_dict: dict[list], context: str=None) -> list[dict]:
+    configuration = client.Configuration()
+    config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
 
-        selectivedeploymentanchor_name = event_object['metadata']['name']
+    with client.ApiClient(configuration) as api_client:
+        coa = client.CustomObjectsApi(api_client)
+        w = watch.Watch()
 
-        if event_type == "ADDED":
-            event_dict[selectivedeploymentanchor_name].append({
-                "name": selectivedeploymentanchor_name,
-                "type": "created",
-                "time": str(datetime.now()),
-            })
-        elif event_type == "DELETED":
-            event_dict[selectivedeploymentanchor_name].append({
-                "name": selectivedeploymentanchor_name,
-                "type": "deleted",
-                "time": str(datetime.now()),
-            })
-            w.stop() # STOP IF THE OBJECT IS DELETED
-        else:
-            event_dict[selectivedeploymentanchor_name].append({
-                "name": selectivedeploymentanchor_name,
-                "type": "modified",
-                "time": str(datetime.now()),
-            })
+        for event in w.stream(coa.list_namespaced_custom_object, namespace=namespace, group="federation.edgenet.io", version="v1alpha1", plural="selectivedeploymentanchors"):
+            event_type = event['type']
+            event_object = event['object'].to_dict()
 
+            selectivedeploymentanchor_name = event_object['metadata']['name']
+
+            if event_type == "ADDED":
+                event_dict[selectivedeploymentanchor_name].append({
+                    "name": selectivedeploymentanchor_name,
+                    "type": "created",
+                    "time": str(datetime.now()),
+                })
+            elif event_type == "DELETED":
+                event_dict[selectivedeploymentanchor_name].append({
+                    "name": selectivedeploymentanchor_name,
+                    "type": "deleted",
+                    "time": str(datetime.now()),
+                })
+                w.stop() # STOP IF THE OBJECT IS DELETED
+            else:
+                event_dict[selectivedeploymentanchor_name].append({
+                    "name": selectivedeploymentanchor_name,
+                    "type": "modified",
+                    "time": str(datetime.now()),
+                })
+
+
+def util_create_selectivedeployment(kubeconfig_file, selectivedeployment_namespace, selectivedeployment_name, deployment_name, deployment_replicas):
+    configuration = client.Configuration()
+    config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
+
+    with client.ApiClient(configuration) as api_client:
+        coa = client.CustomObjectsApi(api_client)
+
+        deployment_object = client.V1Deployment(
+                api_version="v1",
+                kind="Deployment",
+                metadata=client.V1ObjectMeta(
+                    name=f"deployment",
+                    labels={
+                        'app': 'test'
+                    },
+                ),
+                spec=client.V1DeploymentSpec(
+                    replicas=1,
+                    selector=client.V1LabelSelector(
+                        match_labels={
+                            'app': 'test',
+                        },
+                    ),
+                    template=client.V1PodTemplateSpec(
+                        metadata=client.V1ObjectMeta(
+                            labels={
+                                'app': 'test',
+                            },
+                        ),
+                        spec=client.V1PodSpec(
+                            termination_grace_period_seconds=0,
+                            containers=[
+                                client.V1Container(
+                                    name="test-container",
+                                    image="busybox",
+                                    command=["/bin/sh", "-c", "sleep 9999"],
+                                    resources=client.V1ResourceRequirements(
+                                        limits={
+                                            'cpu': '200m',
+                                            'memory': '200Mi'
+                                        },
+                                        requests={
+                                            'cpu': '200m',
+                                            'memory': '200Mi'
+                                        }
+                                    ),
+                                ),
+                            ]
+                        )
+                    )
+                ))
+
+        selectivedeployment_object = {
+            'apiVersion': 'apps.edgenet.io/v1alpha2',
+            'kind': 'SelectiveDeployment',
+            'metadata': {
+                'name': selectivedeployment_name,
+                'namespace': selectivedeployment_namespace
+            },
+            'spec': {
+                'workloads': {
+                    'deployment': [
+                        deployment_object
+                    ]
+                },
+                'clusterAffinity': {
+                    'matchLabels': {
+                        'edge-net.io/city': 'Izmir'
+                    }
+                },
+                'clusterReplicas': 1
+            }
+        }
+
+        try:
+            coa.create_namespaced_custom_object(group="apps.edgenet.io", 
+                                                namespace=selectivedeployment_namespace, 
+                                                version="v1alpha2", 
+                                                plural="selectivedeployments", 
+                                                body=selectivedeployment_object)
+        except client.ApiException as e:
+            return e
+
+def util_delete_selectivedeployment(kubeconfig_file, namespace, selectivedeployment_name):
+    configuration = client.Configuration()
+    config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
+
+    with client.ApiClient(configuration) as api_client:
+        coa = client.CustomObjectsApi(api_client)
+
+        try:
+            coa.delete_cluster_custom_object(name=selectivedeployment_name, 
+                                             namespace=namespace, 
+                                             group="apps.edgenet.io", 
+                                             version="v1alpha2", 
+                                             plural="selectivedeployments")
+        except client.ApiException as e:
+            return e
+
+def util_delete_selectivedeploymentanchor(kubeconfig_file, namespace, selectivedeploymentanchor):
+    configuration = client.Configuration()
+    config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
+
+    with client.ApiClient(configuration) as api_client:
+        coa = client.CustomObjectsApi(api_client)
+
+        try:
+            coa.delete_cluster_custom_object(name=selectivedeploymentanchor, 
+                                             namespace=namespace, 
+                                             group="federation.edgenet.io", 
+                                             version="v1alpha1", 
+                                             plural="selectivedeploymentanchors")
+        except client.ApiException as e:
+            return e
+    
+
+kubeconfig_file = "~/.kube/config-worker-2"
+selectivedeployment_name = 'test-selectivedeployment'
+selectivedeployment_namespace = '71959dc7-5064-4ad1-b72a-a0cbe6a7df5c-test-34390dac'
+deployment_name = "test-deployment"
+deployment_replicas = 1
+
+e = util_create_selectivedeployment(kubeconfig_file, selectivedeployment_namespace, selectivedeployment_name, deployment_name, deployment_replicas)
+print(e)
