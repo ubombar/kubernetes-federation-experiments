@@ -168,8 +168,8 @@ def experiment_selectivedeployments(pod_counts: list[int], single_deployment: bo
         save_json(filepath, experiments)
 
 if __name__ == "__main__":
-    # print("Experiment: single_deployment")
-    experiment_selectivedeployments([1], False, 1)
+    print("Experiment: single_deployment")
+    experiment_selectivedeployments([1, 5, 20], False, 50)
 
-    # print("Experiment: multi_deployment")
-    # experiment_selectivedeployments([1], True, 1)
+    print("Experiment: multi_deployment")
+    experiment_selectivedeployments([1, 5, 20], True, 50)
