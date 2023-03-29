@@ -32,149 +32,50 @@ def save_json(filepath, experiment_object):
     with open(filepath, 'w') as f:
         json.dump(experiment_object, f)
 
-def util_wait_until_deployment_ready(namespace, deployment_name, timeout=None):
-    w = watch.Watch()
-    appsv1 = client.AppsV1Api()
+def util_wait_until_deployment_ready(kubeconfig_file, namespace, deployment_name, timeout=None):
+    configuration = client.Configuration()
+    config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
 
-    try:
-        for event in w.stream(appsv1.list_namespaced_deployment, namespace=namespace, _request_timeout=timeout):
-            deployment = event['object'].to_dict()
+    with client.ApiClient(configuration) as api_client:
+        w = watch.Watch()
+        appsv1 = client.AppsV1Api(api_client)
 
-            if deployment['metadata']['name'] != deployment_name: continue
-            
-            ready_replicas = deployment['status']['ready_replicas']
-            replicas = deployment['status']['replicas']
+        try:
+            for event in w.stream(appsv1.list_namespaced_deployment, namespace=namespace, _request_timeout=timeout):
+                deployment = event['object'].to_dict()
 
-            # If null continue
-            if not ready_replicas: continue
+                if deployment['metadata']['name'] != deployment_name: continue
+                
+                ready_replicas = deployment['status']['ready_replicas']
+                replicas = deployment['status']['replicas']
 
-            if ready_replicas == replicas:
-                w.stop()
-    except client.ApiException as e:
-        return e
-    except KeyboardInterrupt:
-        return
+                # If null continue
+                if not ready_replicas: continue
 
-def util_create_deployment(namespace, deployment_name, replicas):
-    appsv1 = client.AppsV1Api()
+                if ready_replicas == replicas:
+                    w.stop()
+        except client.ApiException as e:
+            return e
+        except KeyboardInterrupt:
+            return
 
-    deployment = client.V1Deployment(
-        metadata=client.V1ObjectMeta(
-            name=deployment_name,
-            labels={
-                'app': 'test'
-            },
-        ),
-        spec=client.V1DeploymentSpec(
-            replicas=replicas,
-            selector=client.V1LabelSelector(
-                match_labels={
-                    'app': 'test',
-                },
-            ),
-            template=client.V1PodTemplateSpec(
-                metadata=client.V1ObjectMeta(
-                    labels={
-                        'app': 'test',
-                    },
-                ),
-                spec=client.V1PodSpec(
-                    containers=[
-                        client.V1Container(
-                            name="test-container",
-                            image="busybox",
-                            command=["/bin/sh", "-c", "sleep 9999"]
-                        ),
-                    ]
-                )
-            )
-        ))
+def util_create_deployment(kubeconfig_file, namespace, deployment_name, replicas):
+    configuration = client.Configuration()
+    config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
 
-    try:
-        appsv1.create_namespaced_deployment(namespace=namespace, body=deployment)
-    except client.ApiException as e:
-        return e
+    with client.ApiClient(configuration) as api_client:
+        w = watch.Watch()
+        appsv1 = client.AppsV1Api(api_client)
 
-def util_delete_deployment(namespace, deployment_name):
-    appsv1 = client.AppsV1Api()
-
-    try:
-        appsv1.delete_namespaced_deployment(name=deployment_name, namespace=namespace)
-    except client.ApiException as e:
-        return e
-
-def retrieve_deployment_events(namespace, deployment_name, event_list) -> list[dict]:
-    w = watch.Watch()
-    appsv1 = client.AppsV1Api()
-
-    for event in w.stream(appsv1.list_namespaced_deployment, namespace=namespace):
-        event_type = event['type']
-        event_object = event['object'].to_dict()
-
-        if not event_object['metadata']['name'] == deployment_name: continue
-
-        if event_type == "ADDED":
-            event_list.append({
-                "name": deployment_name,
-                "type": "created",
-                "ready_replicas": None,
-                "time": str(datetime.now()),
-            })
-        elif event_type == "DELETED":
-            event_list.append({
-                "name": deployment_name,
-                "type": "deleted",
-                "ready_replicas": None,
-                "time": str(datetime.now()),
-            })
-            w.stop() # STOP IF IT DEPLOYMENT IS DELETED
-        else:
-            event_list.append({
-                "name": deployment_name,
-                "type": "modified",
-                "ready_replicas": event_object['status']['ready_replicas'],
-                "time": str(datetime.now()),
-            })
-
-def util_wait_until_deployments_ready(namespace, deployment_count, timeout=None):
-    w = watch.Watch()
-    appsv1 = client.AppsV1Api()
-    number_of_ready = 0
-
-    try:
-        for event in w.stream(appsv1.list_namespaced_deployment, namespace=namespace, _request_timeout=timeout):
-            deployment = event['object'].to_dict()
-
-            ready_replicas = deployment['status']['ready_replicas']
-            replicas = deployment['status']['replicas']
-
-            # If null continue
-            if not ready_replicas: continue
-
-            if ready_replicas == replicas: # replicas == 1 == ready_replicas
-                number_of_ready += 1
-
-            if deployment_count == number_of_ready:
-                w.stop()
-    except client.ApiException as e:
-        return e
-    except KeyboardInterrupt:
-        return
-
-def util_create_deployments(namespace, deployment_count):
-    appv1 = client.AppsV1Api()
-    deployments = []
-
-    for i in range(deployment_count):
         deployment = client.V1Deployment(
             metadata=client.V1ObjectMeta(
-                name=f"deployment-{i}",
+                name=deployment_name,
                 labels={
                     'app': 'test'
                 },
             ),
             spec=client.V1DeploymentSpec(
-                replicas=1, # Each deployment gets 1 replica
+                replicas=replicas,
                 selector=client.V1LabelSelector(
                     match_labels={
                         'app': 'test',
@@ -197,88 +98,229 @@ def util_create_deployments(namespace, deployment_count):
                     )
                 )
             ))
-        deployments.append(deployment)
 
-    try:
-        for deployment in deployments:
-            appv1.create_namespaced_deployment(namespace=namespace, body=deployment)
-    except client.ApiException as e:
-        return e
+        try:
+            appsv1.create_namespaced_deployment(namespace=namespace, body=deployment)
+        except client.ApiException as e:
+            return e
 
-def util_delete_deployments(namespace, deployment_count):
-    appsv1 = client.AppsV1Api()
-    try:
+def util_delete_deployment(kubeconfig_file, namespace, deployment_name):
+    configuration = client.Configuration()
+    config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
+
+    with client.ApiClient(configuration) as api_client:
+        w = watch.Watch()
+        appsv1 = client.AppsV1Api(api_client)
+
+        try:
+            appsv1.delete_namespaced_deployment(name=deployment_name, namespace=namespace)
+        except client.ApiException as e:
+            return e
+
+def retrieve_deployment_events(kubeconfig_file, namespace, deployment_name, event_list) -> list[dict]:
+    configuration = client.Configuration()
+    config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
+
+    with client.ApiClient(configuration) as api_client:
+        w = watch.Watch()
+        appsv1 = client.AppsV1Api(api_client)
+        w = watch.Watch()
+
+        for event in w.stream(appsv1.list_namespaced_deployment, namespace=namespace):
+            event_type = event['type']
+            event_object = event['object'].to_dict()
+
+            if not event_object['metadata']['name'] == deployment_name: continue
+
+            if event_type == "ADDED":
+                event_list.append({
+                    "name": deployment_name,
+                    "type": "created",
+                    "ready_replicas": None,
+                    "time": str(datetime.now()),
+                })
+            elif event_type == "DELETED":
+                event_list.append({
+                    "name": deployment_name,
+                    "type": "deleted",
+                    "ready_replicas": None,
+                    "time": str(datetime.now()),
+                })
+                w.stop() # STOP IF IT DEPLOYMENT IS DELETED
+            else:
+                event_list.append({
+                    "name": deployment_name,
+                    "type": "modified",
+                    "ready_replicas": event_object['status']['ready_replicas'],
+                    "time": str(datetime.now()),
+                })
+
+def util_wait_until_deployments_ready(kubeconfig_file, namespace, deployment_count, timeout=None):
+    configuration = client.Configuration()
+    config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
+
+    with client.ApiClient(configuration) as api_client:
+        w = watch.Watch()
+        appsv1 = client.AppsV1Api(api_client)
+        number_of_ready = 0
+
+        try:
+            for event in w.stream(appsv1.list_namespaced_deployment, namespace=namespace, _request_timeout=timeout):
+                deployment = event['object'].to_dict()
+
+                ready_replicas = deployment['status']['ready_replicas']
+                replicas = deployment['status']['replicas']
+
+                # If null continue
+                if not ready_replicas: continue
+
+                if ready_replicas == replicas: # replicas == 1 == ready_replicas
+                    number_of_ready += 1
+
+                if deployment_count == number_of_ready:
+                    w.stop()
+        except client.ApiException as e:
+            return e
+        except KeyboardInterrupt:
+            return
+
+def util_create_deployments(kubeconfig_file, namespace, deployment_count):
+    configuration = client.Configuration()
+    config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
+
+    with client.ApiClient(configuration) as api_client:
+        w = watch.Watch()
+        appsv1 = client.AppsV1Api(api_client)
+        deployments = []
+
         for i in range(deployment_count):
-            appsv1.delete_namespaced_deployment(name=f"deployment-{i}", namespace=namespace)
-    except client.ApiException as e:
-        return e
+            deployment = client.V1Deployment(
+                metadata=client.V1ObjectMeta(
+                    name=f"deployment-{i}",
+                    labels={
+                        'app': 'test'
+                    },
+                ),
+                spec=client.V1DeploymentSpec(
+                    replicas=1, # Each deployment gets 1 replica
+                    selector=client.V1LabelSelector(
+                        match_labels={
+                            'app': 'test',
+                        },
+                    ),
+                    template=client.V1PodTemplateSpec(
+                        metadata=client.V1ObjectMeta(
+                            labels={
+                                'app': 'test',
+                            },
+                        ),
+                        spec=client.V1PodSpec(
+                            containers=[
+                                client.V1Container(
+                                    name="test-container",
+                                    image="busybox",
+                                    command=["/bin/sh", "-c", "sleep 9999"]
+                                ),
+                            ]
+                        )
+                    )
+                ))
+            deployments.append(deployment)
 
-def retrieve_deployments_events(namespace, event_dict: dict[list]) -> list[dict]:
-    w = watch.Watch()
-    appsv1 = client.AppsV1Api()
+        try:
+            for deployment in deployments:
+                appsv1.create_namespaced_deployment(namespace=namespace, body=deployment)
+        except client.ApiException as e:
+            return e
 
-    for event in w.stream(appsv1.list_namespaced_deployment, namespace=namespace):
-        event_type = event['type']
-        event_object = event['object'].to_dict()
+def util_delete_deployments(kubeconfig_file, namespace, deployment_count):
+    configuration = client.Configuration()
+    config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
 
-        deployment_name = event_object['metadata']['name']
+    with client.ApiClient(configuration) as api_client:
+        w = watch.Watch()
+        appsv1 = client.AppsV1Api(api_client)
 
-        if event_type == "ADDED":
-            event_dict[deployment_name].append({
-                "name": deployment_name,
-                "type": "created",
-                "ready_replicas": None,
-                "time": str(datetime.now()),
-            })
-        elif event_type == "DELETED":
-            event_dict[deployment_name].append({
-                "name": deployment_name,
-                "type": "deleted",
-                "ready_replicas": None,
-                "time": str(datetime.now()),
-            })
-            w.stop() # STOP IF IT DEPLOYMENT IS DELETED
-        else:
-            event_dict[deployment_name].append({
-                "name": deployment_name,
-                "type": "modified",
-                "ready_replicas": event_object['status']['ready_replicas'],
-                "time": str(datetime.now()),
-            })
+        try:
+            for i in range(deployment_count):
+                appsv1.delete_namespaced_deployment(name=f"deployment-{i}", namespace=namespace)
+        except client.ApiException as e:
+            return e
 
-def retrieve_pods_events(namespace, event_dict: dict[list]):
-    w = watch.Watch()
-    corev1 = client.CoreV1Api()
+def retrieve_deployments_events(kubeconfig_file, namespace, event_dict: dict[list]) -> list[dict]:
+    configuration = client.Configuration()
+    config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
 
-    for event in w.stream(corev1.list_namespaced_pod, namespace=namespace):
-        event_type = event['type']
-        event_object = event['object'].to_dict()
+    with client.ApiClient(configuration) as api_client:
+        w = watch.Watch()
+        appsv1 = client.AppsV1Api(api_client)
 
-        pod_name = event_object['metadata']['name']
-        pod_phase = event_object['status']['phase']
+        for event in w.stream(appsv1.list_namespaced_deployment, namespace=namespace):
+            event_type = event['type']
+            event_object = event['object'].to_dict()
 
-        if event_type == "ADDED":
-            event_dict[pod_name].append({
-                "name": pod_name,
-                "type": "created",
-                "phase": pod_phase,
-                "time": str(datetime.now()),
-            })
-        elif event_type == "DELETED":
-            event_dict[pod_name].append({
-                "name": pod_name,
-                "type": "deleted",
-                "phase": pod_phase,
-                "time": str(datetime.now()),
-            })
-            w.stop() # STOP IF IT DEPLOYMENT IS DELETED
-        else:
-            event_dict[pod_name].append({
-                "name": pod_name,
-                "type": "modified",
-                "phase": pod_phase,
-                "time": str(datetime.now()),
-            })
+            deployment_name = event_object['metadata']['name']
+
+            if event_type == "ADDED":
+                event_dict[deployment_name].append({
+                    "name": deployment_name,
+                    "type": "created",
+                    "ready_replicas": None,
+                    "time": str(datetime.now()),
+                })
+            elif event_type == "DELETED":
+                event_dict[deployment_name].append({
+                    "name": deployment_name,
+                    "type": "deleted",
+                    "ready_replicas": None,
+                    "time": str(datetime.now()),
+                })
+                w.stop() # STOP IF IT DEPLOYMENT IS DELETED
+            else:
+                event_dict[deployment_name].append({
+                    "name": deployment_name,
+                    "type": "modified",
+                    "ready_replicas": event_object['status']['ready_replicas'],
+                    "time": str(datetime.now()),
+                })
+
+def retrieve_pods_events(kubeconfig_file, namespace, event_dict: dict[list]):
+    configuration = client.Configuration()
+    config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
+
+    with client.ApiClient(configuration) as api_client:
+        w = watch.Watch()
+        corev1 = client.CoreV1Api(api_client)
+
+        for event in w.stream(corev1.list_namespaced_pod, namespace=namespace):
+            event_type = event['type']
+            event_object = event['object'].to_dict()
+
+            pod_name = event_object['metadata']['name']
+            pod_phase = event_object['status']['phase']
+
+            if event_type == "ADDED":
+                event_dict[pod_name].append({
+                    "name": pod_name,
+                    "type": "created",
+                    "phase": pod_phase,
+                    "time": str(datetime.now()),
+                })
+            elif event_type == "DELETED":
+                event_dict[pod_name].append({
+                    "name": pod_name,
+                    "type": "deleted",
+                    "phase": pod_phase,
+                    "time": str(datetime.now()),
+                })
+                w.stop() # STOP IF IT DEPLOYMENT IS DELETED
+            else:
+                event_dict[pod_name].append({
+                    "name": pod_name,
+                    "type": "modified",
+                    "phase": pod_phase,
+                    "time": str(datetime.now()),
+                })
 
 def retrieve_selectivedeployments_events(kubeconfig_file, namespace, event_dict: dict[list], context: str=None) -> list[dict]:
     configuration = client.Configuration()
@@ -464,12 +506,3 @@ def util_delete_selectivedeploymentanchor(kubeconfig_file, namespace, selectived
         except client.ApiException as e:
             return e
     
-
-kubeconfig_file = "~/.kube/config-worker-2"
-selectivedeployment_name = 'test-selectivedeployment'
-selectivedeployment_namespace = '71959dc7-5064-4ad1-b72a-a0cbe6a7df5c-test-34390dac'
-deployment_name = "test-deployment"
-deployment_replicas = 1
-
-e = util_create_selectivedeployment(kubeconfig_file, selectivedeployment_namespace, selectivedeployment_name, deployment_name, deployment_replicas)
-print(e)
