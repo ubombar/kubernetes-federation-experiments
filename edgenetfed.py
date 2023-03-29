@@ -38,7 +38,7 @@ def edgenetfed_selectivedeployment_type_experiment(pod_count, namespace, federat
     selectivedeployment_worker2_thread = threading.Thread(target=retrieve_selectivedeployment_events, args=[kubeconfig_file_worker2, namespace, "selectivedeployment", result["selectivedeployment_events_worker2"]])
     selectivedeployment_worker2_thread.start()
 
-    selectivedeploymentanchor_fedmanager_thread = threading.Thread(target=retrieve_selectivedeploymentanchors_events, args=[kubeconfig_file_worker2, federation_namespace, result["selectivedeploymentanchors_events_fedmanager"]])
+    selectivedeploymentanchor_fedmanager_thread = threading.Thread(target=retrieve_selectivedeploymentanchors_events, args=[kubeconfig_file_fedmanager, federation_namespace, result["selectivedeploymentanchors_events_fedmanager"]])
     selectivedeploymentanchor_fedmanager_thread.start()
 
     result["time_before_create"] = str(datetime.now())
