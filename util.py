@@ -402,13 +402,13 @@ def util_create_selectivedeployment(kubeconfig_file, selectivedeployment_namespa
                 api_version="v1",
                 kind="Deployment",
                 metadata=client.V1ObjectMeta(
-                    name=f"deployment",
+                    name=deployment_name,
                     labels={
                         'app': 'test'
                     },
                 ),
                 spec=client.V1DeploymentSpec(
-                    replicas=1,
+                    replicas=deployment_replicas,
                     selector=client.V1LabelSelector(
                         match_labels={
                             'app': 'test',
@@ -482,7 +482,7 @@ def util_delete_selectivedeployment(kubeconfig_file, namespace, selectivedeploym
         coa = client.CustomObjectsApi(api_client)
 
         try:
-            coa.delete_cluster_custom_object(name=selectivedeployment_name, 
+            coa.delete_namespaced_custom_object(name=selectivedeployment_name, 
                                              namespace=namespace, 
                                              group="apps.edgenet.io", 
                                              version="v1alpha2", 
@@ -490,7 +490,7 @@ def util_delete_selectivedeployment(kubeconfig_file, namespace, selectivedeploym
         except client.ApiException as e:
             return e
 
-def util_delete_selectivedeploymentanchor(kubeconfig_file, namespace, selectivedeploymentanchor):
+def util_delete_selectivedeploymentanchors(kubeconfig_file, namespace):
     configuration = client.Configuration()
     config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
 
@@ -498,8 +498,7 @@ def util_delete_selectivedeploymentanchor(kubeconfig_file, namespace, selectived
         coa = client.CustomObjectsApi(api_client)
 
         try:
-            coa.delete_cluster_custom_object(name=selectivedeploymentanchor, 
-                                             namespace=namespace, 
+            coa.delete_collection_namespaced_custom_object(namespace=namespace, 
                                              group="federation.edgenet.io", 
                                              version="v1alpha1", 
                                              plural="selectivedeploymentanchors")
