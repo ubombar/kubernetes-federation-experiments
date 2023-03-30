@@ -61,6 +61,7 @@ def edgenetfed_selectivedeployment_type_experiment(pod_count,
     util_delete_selectivedeployment(kubeconfig_file_worker1, namespace, "selectivedeployment") # Delete sd sda from all 3 clusters
     util_delete_selectivedeployment(kubeconfig_file_worker2, namespace, "selectivedeployment")
     util_delete_selectivedeploymentanchors(kubeconfig_file_fedmanager, federation_namespace)
+    util_delete_namespace(kubeconfig_file_worker2, namespace)
 
     result["time_before_sleep2"] = str(datetime.now())
     time.sleep(second_sleep_seconds)
@@ -120,6 +121,7 @@ def edgenetfed_selectivedeployments_type_experiment(pod_count,
     util_delete_selectivedeployments(kubeconfig_file_worker1, namespace, "selectivedeployment", pod_count) # Delete sd sda from all 3 clusters
     util_delete_selectivedeployments(kubeconfig_file_worker2, namespace, "selectivedeployment", pod_count)
     util_delete_selectivedeploymentanchors(kubeconfig_file_fedmanager, federation_namespace)
+    util_delete_namespace(kubeconfig_file_worker2, namespace)
 
     result["time_before_sleep2"] = str(datetime.now())
     time.sleep(second_sleep_seconds)

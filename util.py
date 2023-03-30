@@ -467,12 +467,12 @@ def util_create_selectivedeployment(kubeconfig_file, selectivedeployment_namespa
                                     command=["/bin/sh", "-c", "sleep 9999"],
                                     resources=client.V1ResourceRequirements(
                                         limits={
-                                            'cpu': '200m',
-                                            'memory': '200Mi'
+                                            'cpu': '50m',
+                                            'memory': '50Mi'
                                         },
                                         requests={
-                                            'cpu': '200m',
-                                            'memory': '200Mi'
+                                            'cpu': '50m',
+                                            'memory': '50Mi'
                                         }
                                     ),
                                 ),
@@ -551,12 +551,12 @@ def util_create_selectivedeployments(kubeconfig_file, selectivedeployment_namesp
                                         command=["/bin/sh", "-c", "sleep 9999"],
                                         resources=client.V1ResourceRequirements(
                                             limits={
-                                                'cpu': '200m',
-                                                'memory': '200Mi'
+                                                'cpu': '50m',
+                                                'memory': '50Mi'
                                             },
                                             requests={
-                                                'cpu': '200m',
-                                                'memory': '200Mi'
+                                                'cpu': '50m',
+                                                'memory': '50Mi'
                                             }
                                         ),
                                     ),
@@ -644,6 +644,17 @@ def util_delete_selectivedeploymentanchors(kubeconfig_file, namespace):
         except client.ApiException as e:
             return e
     
+def util_delete_namespace(kubeconfig_file, namespace):
+    configuration = client.Configuration()
+    config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
+
+    with client.ApiClient(configuration) as api_client:
+        core = client.CoreV1Api(api_client)
+
+        try:
+            core.delete_namespace(name=namespace)
+        except client.ApiException as e:
+            return e
 
 
 # if __name__ == "__main__":
