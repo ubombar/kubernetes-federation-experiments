@@ -31,6 +31,7 @@ def edgenetfed_selectivedeployment_type_experiment(pod_count,
         "selectivedeployment_events_worker1": list(),
         "selectivedeployment_events_worker2": list(),
         "selectivedeploymentanchors_events_fedmanager": collections.defaultdict(list),
+        "namespace_events_worker2": list(),
     }
 
     deployment_thread = threading.Thread(target=retrieve_deployment_events, args=[kubeconfig_file_worker2, namespace, "selectivedeployment-deployment", result["deployment_events"]])
@@ -47,6 +48,9 @@ def edgenetfed_selectivedeployment_type_experiment(pod_count,
 
     selectivedeploymentanchor_fedmanager_thread = threading.Thread(target=retrieve_selectivedeploymentanchors_events, args=[kubeconfig_file_fedmanager, federation_namespace, result["selectivedeploymentanchors_events_fedmanager"]])
     selectivedeploymentanchor_fedmanager_thread.start()
+
+    namespace_worker2_thread = threading.Thread(target=retrieve_namespace_events, args=[kubeconfig_file_worker2, namespace, result["namespace_events_worker2"]])
+    namespace_worker2_thread.start()
 
     result["time_before_create"] = str(datetime.now())
     util_create_selectivedeployment(kubeconfig_file_worker1, namespace, "selectivedeployment", "deployment", pod_count) # Create one in worker 1
@@ -72,6 +76,7 @@ def edgenetfed_selectivedeployment_type_experiment(pod_count,
     selectivedeployment_worker1_thread.join()
     selectivedeployment_worker2_thread.join()
     selectivedeploymentanchor_fedmanager_thread.join()
+    namespace_worker2_thread.join()
 
     result["time_before_end"] = str(datetime.now())
     return result
@@ -91,6 +96,7 @@ def edgenetfed_selectivedeployments_type_experiment(pod_count,
         "selectivedeployment_events_worker1": collections.defaultdict(list),
         "selectivedeployment_events_worker2": collections.defaultdict(list),
         "selectivedeploymentanchors_events_fedmanager": collections.defaultdict(list),
+        "namespace_events_worker2": list(),
     }
 
     deployments_thread = threading.Thread(target=retrieve_deployments_events, args=[kubeconfig_file_worker2, namespace, result["deployment_events"]])
@@ -107,6 +113,9 @@ def edgenetfed_selectivedeployments_type_experiment(pod_count,
 
     selectivedeploymentanchor_fedmanager_thread = threading.Thread(target=retrieve_selectivedeploymentanchors_events, args=[kubeconfig_file_fedmanager, federation_namespace, result["selectivedeploymentanchors_events_fedmanager"]])
     selectivedeploymentanchor_fedmanager_thread.start()
+
+    namespace_worker2_thread = threading.Thread(target=retrieve_namespace_events, args=[kubeconfig_file_worker2, namespace, result["namespace_events_worker2"]])
+    namespace_worker2_thread.start()
 
     result["time_before_create"] = str(datetime.now())
     util_create_selectivedeployments(kubeconfig_file_worker1, namespace, "selectivedeployment", "deployment", pod_count) # Create one in worker 1
@@ -132,6 +141,7 @@ def edgenetfed_selectivedeployments_type_experiment(pod_count,
     selectivedeployment_worker1_thread.join()
     selectivedeployment_worker2_thread.join()
     selectivedeploymentanchor_fedmanager_thread.join()
+    namespace_worker2_thread.join()
 
     result["time_before_end"] = str(datetime.now())
     return result
@@ -170,8 +180,14 @@ def experiment_selectivedeployments(pod_counts: list[int], single_deployment: bo
         save_json(filepath, experiments)
 
 if __name__ == "__main__":
+    # print("Experiment: single_deployment")
+    # experiment_selectivedeployments([1, 5, 20], False, 50)
+
+    # print("Experiment: multi_deployment")
+    # experiment_selectivedeployments([1, 5, 20], True, 50)
+
     print("Experiment: single_deployment")
-    experiment_selectivedeployments([1, 5, 20], False, 50)
+    experiment_selectivedeployments([1,], False, 1)
 
     print("Experiment: multi_deployment")
-    experiment_selectivedeployments([1, 5, 20], True, 50)
+    experiment_selectivedeployments([1,], True, 1)

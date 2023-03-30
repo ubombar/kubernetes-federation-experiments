@@ -339,14 +339,12 @@ def retrieve_selectivedeployment_events(kubeconfig_file, namespace, selectivedep
                 event_list.append({
                     "name": selectivedeployment_name,
                     "type": "created",
-                    "ready_replicas": None,
                     "time": str(datetime.now()),
                 })
             elif event_type == "DELETED":
                 event_list.append({
                     "name": selectivedeployment_name,
                     "type": "deleted",
-                    "ready_replicas": None,
                     "time": str(datetime.now()),
                 })
                 w.stop() # STOP IF IT DEPLOYMENT IS DELETED
@@ -425,6 +423,40 @@ def retrieve_selectivedeploymentanchors_events(kubeconfig_file, namespace, event
             else:
                 event_dict[selectivedeploymentanchor_name].append({
                     "name": selectivedeploymentanchor_name,
+                    "type": "modified",
+                    "time": str(datetime.now()),
+                })
+
+def retrieve_namespace_events(kubeconfig_file, namespace, event_list) -> list[dict]:
+    configuration = client.Configuration()
+    config.load_kube_config(config_file=kubeconfig_file, client_configuration=configuration)
+
+    with client.ApiClient(configuration) as api_client:
+        core = client.CoreV1Api(api_client)
+        w = watch.Watch()
+
+        for event in w.stream(core.list_namespace):
+            event_type = event['type']
+            event_object = event['object']
+
+            if not event_object['metadata']['name'] == namespace: continue
+
+            if event_type == "ADDED":
+                event_list.append({
+                    "name": namespace,
+                    "type": "created",
+                    "time": str(datetime.now()),
+                })
+            elif event_type == "DELETED":
+                event_list.append({
+                    "name": namespace,
+                    "type": "deleted",
+                    "time": str(datetime.now()),
+                })
+                w.stop() # STOP IF IT DEPLOYMENT IS DELETED
+            else:
+                event_list.append({
+                    "name": namespace,
                     "type": "modified",
                     "time": str(datetime.now()),
                 })
