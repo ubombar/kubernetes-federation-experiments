@@ -437,7 +437,7 @@ def retrieve_namespace_events(kubeconfig_file, namespace, event_list) -> list[di
 
         for event in w.stream(core.list_namespace):
             event_type = event['type']
-            event_object = event['object']
+            event_object = event['object'].to_dict()
 
             if not event_object['metadata']['name'] == namespace: continue
 
