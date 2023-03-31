@@ -136,3 +136,4 @@ custom-resource-object.yaml
 
 .old/**
 *.json
+*.xlsx
